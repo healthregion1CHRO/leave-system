@@ -143,9 +143,14 @@ function changePassword(token, oldPw, newPw) {
     if (!pwMatches_(r, oldPw)) throw new Error('รหัสผ่านเดิมไม่ถูกต้อง');
     sheet_(SH.STAFF).getRange(r.row, 10, 1, 3).setValues([[salt, hash_(salt, newPw), false]]);
   });
-  s.v = salt; // session ปัจจุบันใช้ต่อได้ session อื่นของบัญชีนี้หมดอายุ
-  CacheService.getScriptCache().put('s_' + token, JSON.stringify(s), SESSION_SECONDS);
+  rebind_(token, s, salt);
   return true;
+}
+
+// session ปัจจุบันใช้ต่อได้หลังเปลี่ยนรหัสของตัวเอง ส่วน session อื่นของบัญชีนี้หมดอายุ
+function rebind_(token, s, salt) {
+  s.v = salt;
+  CacheService.getScriptCache().put('s_' + token, JSON.stringify(s), SESSION_SECONDS);
 }
 
 // ---------------------------------------------------------------- API: HR
@@ -167,7 +172,11 @@ function saveStaff(token, st) {
       if (r.id === s.id && role !== 'HR') throw new Error('เปลี่ยนบทบาทของตัวเองออกจาก HR ไม่ได้');
       var sh = sheet_(SH.STAFF);
       sh.getRange(r.row, 2, 1, 7).setValues([[name, st.position || '', st.level || '', st.group || '', st.section || '', ptype, role]]);
-      if (cid) { var salt = Utilities.getUuid(); sh.getRange(r.row, 10, 1, 3).setValues([[salt, hash_(salt, cid), true]]); }
+      if (cid) {
+        var salt = Utilities.getUuid();
+        sh.getRange(r.row, 10, 1, 3).setValues([[salt, hash_(salt, cid), true]]);
+        if (r.id === s.id) rebind_(token, s, salt);
+      }
       if (r.name !== name) renameInSheet_(SH.LEAVES, 2, 3, r.id, name), renameInSheet_(SH.CARRY, 1, 2, r.id, name);
     } else {
       if (!cid) throw new Error('กรอกเลขบัตรประชาชนเพื่อใช้เป็นรหัสผ่านเริ่มต้น');
@@ -200,6 +209,7 @@ function resetPassword(token, id, cid) {
     var r = findStaff_(id);
     var salt = Utilities.getUuid();
     sheet_(SH.STAFF).getRange(r.row, 10, 1, 3).setValues([[salt, hash_(salt, cid), true]]);
+    if (r.id === s.id) rebind_(token, s, salt);
   });
   return { data: buildData_(s) };
 }
@@ -457,7 +467,7 @@ function normName_(n) {
     .replace(/\s+/g, '').toLowerCase();
 }
 function typeCode_(v) {
-  var s = String(v || '').trim();
+  var s = String(v || '').replace(/ํา/g, 'ำ').trim(); // "ํา" สองตัว → "ำ"
   var map = { 'ข้าราชการ': 'gov', 'พนักงานราชการ': 'emp', 'พนักงานกระทรวงสาธารณสุข': 'moph', 'พกส.': 'moph', 'ลูกจ้างชั่วคราว': 'temp' };
   if (map[s]) return map[s];
   if (['gov', 'emp', 'moph', 'temp'].indexOf(s) >= 0) return s;
@@ -469,9 +479,11 @@ function typeCode_(v) {
 }
 function isIso_(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')); }
 function isoCell_(v) {
-  if (v instanceof Date) return Utilities.formatDate(v, SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+  if (v instanceof Date) return Utilities.formatDate(v, tz_(), 'yyyy-MM-dd');
   var s = String(v || '').trim();
   return isIso_(s) ? s : '';
 }
+var TZ_;
+function tz_() { return TZ_ || (TZ_ = SpreadsheetApp.getActive().getSpreadsheetTimeZone()); }
 function isoCellOrRaw_(v) { return v instanceof Date ? isoCell_(v) : v; }
 function fyOf_(iso) { var y = Number(iso.slice(0, 4)), m = Number(iso.slice(5, 7)); return (m >= 10 ? y + 1 : y) + 543; }

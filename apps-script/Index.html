@@ -655,9 +655,9 @@ function viewRecord(){
       <label class="field"><span>เลขที่ใบลา / หนังสือ (ถ้ามี)</span><input id="f_doc" value="${esc(d.docNo)}"></label>
       <label class="field wide"><span>เหตุผล / หมายเหตุ</span><input id="f_note" value="${esc(d.note)}" placeholder="เช่น ไข้หวัด มีใบรับรองแพทย์"></label>
     </div>
-    <div id="calcBox" style="display:contents">${info}</div>
     <div class="row"><span class="muted" style="font-size:.85rem">นับเฉพาะวันทำการ ไม่รวมเสาร์-อาทิตย์และวันหยุดราชการในหน้าตั้งค่า</span><span class="spacer"></span>
       <button type="button" class="ghost" data-act="reset-draft">ล้างฟอร์ม</button><button type="submit" class="primary">บันทึกการลา</button></div>
+    <div id="calcBox" style="display:contents">${info}</div>
   </form>`;
 }
 
@@ -852,7 +852,7 @@ function render(){
 
 // ---------- events ----------
 document.addEventListener("click", async ev => {
-  if(S.tdp && !ev.target.closest(".cal") && !ev.target.closest(".tdp-btn")){ S.tdp=null; render(); }
+  if(S.tdp && !ev.target.closest(".cal") && !ev.target.closest(".tdp-btn")){ S.tdp=null; document.querySelector(".cal")?.remove(); }
   const t = ev.target.closest("[data-act]"); if(!t) return;
   if(t.dataset.act==="tdp-open"){ const id=t.dataset.id; if(S.tdp?.id===id){ S.tdp=null; } else { const cur=document.getElementById(id)?.value || todayIso(); const [y,m]=cur.split("-").map(Number); S.tdp={id,y,m:m-1}; } render(); return; }
   if(t.dataset.act==="tdp-nav"){ let m=S.tdp.m+Number(t.dataset.d), y=S.tdp.y; if(m<0){m=11;y--;} if(m>11){m=0;y++;} S.tdp={...S.tdp,y,m}; render(); return; }
@@ -934,7 +934,7 @@ document.addEventListener("change", ev => {
   const id = ev.target.id || ev.target.name;
   if(S.view==="record" && /^f_/.test(id)){
     readDraft();
-    if(["f_start_txt","f_end_txt","f_half","f_kind","f_staff","f_emerg"].includes(id)) S.draft.daysOverride="";
+    if(["f_start_txt","f_end_txt","f_half","f_kind","f_staff","f_emerg"].includes(id)){ S.draft.daysOverride=""; const fd=document.getElementById("f_days"); if(fd) fd.value=""; }
     // text fields: patch in place, a full re-render here would swallow a click on the save button
     if(["f_start_txt","f_end_txt","f_note","f_doc","f_days"].includes(id)) refreshCalc(); else render();
   }
