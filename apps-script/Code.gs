@@ -439,11 +439,11 @@ function typeCode_(v) {
   var s = String(v || '').trim();
   var map = { 'ข้าราชการ': 'gov', 'พนักงานราชการ': 'emp', 'พนักงานกระทรวงสาธารณสุข': 'moph', 'พกส.': 'moph', 'ลูกจ้างชั่วคราว': 'temp' };
   if (map[s]) return map[s];
-  var t = s.replace(/\s+/g, '');
-  if (/^(พนักงานกระทรวง|พกส)/.test(t)) return 'moph';
-  if (/^พนักงานราชการ/.test(t)) return 'emp';
-  if (/^ลูกจ้าง/.test(t)) return 'temp';
-  return ['gov', 'emp', 'moph', 'temp'].indexOf(s) >= 0 ? s : 'gov';
+  if (['gov', 'emp', 'moph', 'temp'].indexOf(s) >= 0) return s;
+  if (/^พนักงานกระทรวง|^พกส/.test(s)) return 'moph';
+  if (/^พนักงานราชการ/.test(s)) return 'emp';
+  if (/^ลูกจ้าง/.test(s)) return 'temp';
+  return 'gov';
 }
 function isIso_(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')); }
 function isoCell_(v) {
