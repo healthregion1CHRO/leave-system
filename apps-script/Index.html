@@ -294,16 +294,21 @@ const DEFAULT_CONFIG = {
     temp: {label:"ลูกจ้างชั่วคราว", sick:30, personal:10, personalFirstYear:10, vacation:10, carryCap:15, carryCapLong:15, longYears:0},
   },
   holidays: [
+    {d:"2026-10-13", n:"วันนวมินทรมหาราช"},
+    {d:"2026-10-23", n:"วันปิยมหาราช"},
     {d:"2026-12-07", n:"ชดเชยวันคล้ายวันพระบรมราชสมภพ ร.9 / วันพ่อแห่งชาติ"},
     {d:"2026-12-10", n:"วันรัฐธรรมนูญ"},
     {d:"2026-12-31", n:"วันสิ้นปี"},
     {d:"2027-01-01", n:"วันขึ้นปีใหม่"},
+    {d:"2027-02-22", n:"ชดเชยวันมาฆบูชา"},
     {d:"2027-04-06", n:"วันจักรี"},
     {d:"2027-04-13", n:"วันสงกรานต์"},
     {d:"2027-04-14", n:"วันสงกรานต์"},
     {d:"2027-04-15", n:"วันสงกรานต์"},
     {d:"2027-05-04", n:"วันฉัตรมงคล"},
+    {d:"2027-05-20", n:"วันวิสาขบูชา"},
     {d:"2027-06-03", n:"วันเฉลิมพระชนมพรรษาสมเด็จพระราชินี"},
+    {d:"2027-07-19", n:"วันเข้าพรรษา"},
     {d:"2027-07-28", n:"วันเฉลิมพระชนมพรรษา ร.10"},
     {d:"2027-08-12", n:"วันแม่แห่งชาติ"},
   ],
@@ -342,7 +347,7 @@ const TH_MONTHS_FULL = ["มกราคม","กุมภาพันธ์","�
 const CAL_ICON = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>';
 const isoToBE = iso => { if(!iso) return ""; const [y,m,d]=iso.split("-"); return `${d}/${m}/${Number(y)+543}`; };
 const beToIso = txt => { const m = String(txt||"").trim().match(/^(\d{1,2})[\/\-\. ](\d{1,2})[\/\-\. ](\d{2,4})$/); if(!m) return null;
-  let d=+m[1], mo=+m[2], y=+m[3]; if(y<100) y+=2500; if(y>2400) y-=543; if(mo<1||mo>12||d<1) return null;
+  let d=+m[1], mo=+m[2], y=+m[3]; if(y<100) y+=2500; if(y>2400) y-=543; if(y<1900||y>2200||mo<1||mo>12||d<1) return null;
   const dt=new Date(Date.UTC(y,mo-1,d)); if(dt.getUTCDate()!==d) return null; return isoOf(dt); };
 function dateField(id, iso, opts={}){
   const open = S.tdp && S.tdp.id===id;
@@ -540,7 +545,7 @@ function viewSummary(){
       <td>${flags.join(" ")}</td><td>${actBtns(p._id, false)}</td></tr>`;
   }).join("");
   const groups = [...ORG.map(o=>o.g), ...distinct(all.map(groupOf)).filter(g=>!ORG.some(o=>o.g===g))];
-  const typeOpts = [["all","ทุกประเภท"],...Object.entries(S.config.types).map(([k,v])=>[k,v.label])].map(([k,l])=>`<option value="${k}" ${S.filterType===k?"selected":""}>${esc(l)}</option>`).join("");
+  const typeOpts = [["all","ทุกประเภท"],...Object.entries(S.config.types).map(([k,v])=>[k,v.label])].map(([k,l])=>`<option value="${esc(k)}" ${S.filterType===k?"selected":""}>${esc(l)}</option>`).join("");
   return `
   <div class="row"><div><h2>สรุปการลารายบุคคล ปีงบประมาณ ${S.fy}</h2><span class="muted">${thDate(fyRange(S.fy)[0])} – ${thDate(fyRange(S.fy)[1])} · หน่วยเป็นวันทำการ (ใช้ / สิทธิ์)</span></div>
   <span class="spacer"></span><button data-act="csv">ส่งออกเป็นชีต</button><button class="primary" data-act="tab" data-v="record">+ บันทึกการลา</button></div>
@@ -586,10 +591,10 @@ function leaveTable(p, fy, editable){
   const ls = (p.leaves||[]).filter(l=>l.fy===fy).sort((a,b)=>b.start.localeCompare(a.start));
   if(!ls.length) return `<div class="panel empty"><h3>ไม่มีรายการลาในปีงบประมาณ ${fy}</h3><p>${editable?"กด “บันทึกการลา” เพื่อเพิ่มรายการ":"เมื่อ HR บันทึกการลาของคุณ รายการจะแสดงที่นี่"}</p></div>`;
   return `<div class="tbl-wrap"><table><thead><tr><th>ประเภท</th><th>ตั้งแต่</th><th>ถึง</th><th class="num">วันทำการ</th><th>หมายเหตุ</th>${editable?"<th></th>":""}</tr></thead><tbody>
-  ${ls.map(l=>`<tr><td><span class="pill ${KINDS[l.kind].cls}">${KINDS[l.kind].label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}</td>
+  ${ls.map(l=>{ const K=KINDS[l.kind]||{cls:"neutral",label:esc(l.kind||"?")}; return `<tr><td><span class="pill ${K.cls}">${K.label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}</td>
     <td>${thDate(l.start)}${l.half&&l.half!=="full"?` <small class="muted">(${l.half==="am"?"ครึ่งเช้า":"ครึ่งบ่าย"})</small>`:""}</td><td>${thDate(l.end)}</td>
     <td class="num">${fmtN(l.days)}</td><td style="white-space:normal;min-width:160px">${esc(l.note||"")}${l.docNo?`<br><small class="muted">เลขที่ ${esc(l.docNo)}</small>`:""}</td>
-    ${editable?`<td>${S.confirmKey==="del:"+l.id?`<span class="confirm"><button class="small danger" data-act="del-leave" data-id="${esc(l.id)}">ยืนยันลบ</button><button class="small ghost" data-act="cancel">ยกเลิก</button></span>`:`<button class="small ghost" data-act="ask" data-k="del:${esc(l.id)}">ลบ</button>`}</td>`:""}</tr>`).join("")}
+    ${editable?`<td>${S.confirmKey==="del:"+l.id?`<span class="confirm"><button class="small danger" data-act="del-leave" data-id="${esc(l.id)}">ยืนยันลบ</button><button class="small ghost" data-act="cancel">ยกเลิก</button></span>`:`<button class="small ghost" data-act="ask" data-k="del:${esc(l.id)}">ลบ</button>`}</td>`:""}</tr>`; }).join("")}
   </tbody></table></div>`;
 }
 function viewPerson(){
@@ -629,7 +634,7 @@ function viewRecord(){
     const overlap = (p.leaves||[]).find(l => !(d.end < l.start || d.start > l.end));
     info = `<div class="calc"><span>ปีงบ ${fy}</span><span>${KINDS[d.kind].label}: คงเหลือ <b>${fmtN(b.left)}</b> วัน</span><span>หลังบันทึก <b style="color:${after<0?"var(--danger)":"inherit"}">${fmtN(after)}</b> วัน</span></div>`
       + (after<0?`<div class="notice warn">จำนวนวันเกินสิทธิ์ที่ได้รับเงินเดือนตามระเบียบ ตรวจสอบการอนุญาตของผู้บังคับบัญชาก่อนบันทึก</div>`:"")
-      + (overlap?`<div class="notice warn">ช่วงวันที่ซ้อนกับรายการเดิม: ${KINDS[overlap.kind].label} ${thDate(overlap.start)} – ${thDate(overlap.end)}</div>`:"")
+      + (overlap?`<div class="notice warn">ช่วงวันที่ซ้อนกับรายการเดิม: ${(KINDS[overlap.kind]||{label:"การลา"}).label} ${thDate(overlap.start)} – ${thDate(overlap.end)}</div>`:"")
       + (d.start && d.end && fyOf(d.start)!==fyOf(d.end)?`<div class="notice warn">ช่วงลาคร่อมสองปีงบประมาณ ควรแยกบันทึกเป็นสองรายการ</div>`:"");
   }
   const opts = list.map(s=>`<option value="${esc(s._id)}" ${d.staffId===s._id?"selected":""}>${esc(s.name)}${posLine(s)?" — "+esc(posLine(s)):""}</option>`).join("");
@@ -644,13 +649,13 @@ function viewRecord(){
       </div></div>
       <label class="field"><span>ตั้งแต่วันที่</span>${dateField("f_start", d.start)}</label>
       <label class="field"><span>ถึงวันที่</span>${dateField("f_end", d.end)}</label>
-      <label class="field"><span>ช่วงเวลา${single?"":" (ใช้ได้เมื่อลาวันเดียว)"}</span><select id="f_half" ${single?"":"disabled"}>
+      <label class="field"><span id="f_half_lbl">ช่วงเวลา${single?"":" (ใช้ได้เมื่อลาวันเดียว)"}</span><select id="f_half" ${single?"":"disabled"}>
         <option value="full" ${d.half==="full"?"selected":""}>เต็มวัน</option><option value="am" ${d.half==="am"?"selected":""}>ครึ่งวันเช้า</option><option value="pm" ${d.half==="pm"?"selected":""}>ครึ่งวันบ่าย</option></select></label>
-      <label class="field"><span>จำนวนวันทำการ (คำนวณอัตโนมัติ ${fmtN(auto)} วัน)</span><input type="number" id="f_days" min="0" step="0.5" value="${esc(d.daysOverride)}" placeholder="${fmtN(auto)}"></label>
+      <label class="field"><span id="f_days_lbl">จำนวนวันทำการ (คำนวณอัตโนมัติ ${fmtN(auto)} วัน)</span><input type="number" id="f_days" min="0" step="0.5" value="${esc(d.daysOverride)}" placeholder="${fmtN(auto)}"></label>
       <label class="field"><span>เลขที่ใบลา / หนังสือ (ถ้ามี)</span><input id="f_doc" value="${esc(d.docNo)}"></label>
       <label class="field wide"><span>เหตุผล / หมายเหตุ</span><input id="f_note" value="${esc(d.note)}" placeholder="เช่น ไข้หวัด มีใบรับรองแพทย์"></label>
     </div>
-    ${info}
+    <div id="calcBox" style="display:contents">${info}</div>
     <div class="row"><span class="muted" style="font-size:.85rem">นับเฉพาะวันทำการ ไม่รวมเสาร์-อาทิตย์และวันหยุดราชการในหน้าตั้งค่า</span><span class="spacer"></span>
       <button type="button" class="ghost" data-act="reset-draft">ล้างฟอร์ม</button><button type="submit" class="primary">บันทึกการลา</button></div>
   </form>`;
@@ -661,7 +666,7 @@ function viewStaff(){
   const sq = (S.sq||"").trim().toLowerCase();
   const all = staffList();
   const list = all.filter(p => (S.sGroup==="all"||!S.sGroup||groupOf(p)===S.sGroup) && (!sq || `${p.name} ${posLine(p)} ${orgLine(p)}`.toLowerCase().includes(sq)));
-  const typeOpts = sel => Object.entries(S.config.types).map(([k,v])=>`<option value="${k}" ${sel===k?"selected":""}>${esc(v.label)}</option>`).join("");
+  const typeOpts = sel => Object.entries(S.config.types).map(([k,v])=>`<option value="${esc(k)}" ${sel===k?"selected":""}>${esc(v.label)}</option>`).join("");
   const gOpts = [...ORG.map(o=>o.g), ...distinct(all.map(groupOf)).filter(g=>!ORG.some(o=>o.g===g))].map(g=>`<option value="${esc(g)}" ${S.sGroup===g?"selected":""}>${esc(g)}</option>`).join("");
   const pg = paginate(list, "staff");
   const rows = pg.items.map((p,i)=>`<tr><td class="no">${pg.start+i+1}</td><td><div class="name-cell"><span class="av" aria-hidden="true">${esc(initial(p.name))}</span><span class="nm"><b>${esc(p.name)}</b><small>${esc(posLine(p))}${orgLine(p)?" · "+esc(orgLine(p)):""}</small></span></div></td>
@@ -681,7 +686,7 @@ function viewStaff(){
 
 function staffModal(){
   const e = S.editStaff; if(!e) return "";
-  const typeOpts = Object.entries(S.config.types).map(([k,v])=>`<option value="${k}" ${e.ptype===k?"selected":""}>${esc(v.label)}</option>`).join("");
+  const typeOpts = Object.entries(S.config.types).map(([k,v])=>`<option value="${esc(k)}" ${e.ptype===k?"selected":""}>${esc(v.label)}</option>`).join("");
   const subs = sectionsOf(e.group);
   return `<div class="overlay" data-act="overlay"><form class="modal" id="staffForm" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <div class="m-head"><span class="badge">${e.id?ICON.edit:ICON.user}</span><div><h3 id="mTitle">${e.id?"แก้ไขข้อมูลบุคลากร":"เพิ่มบุคลากรใหม่"}</h3><span class="muted" style="font-size:.85rem">${e.id?esc(e.name):"กรอกข้อมูลแล้วกดบันทึก"}</span></div>
@@ -783,7 +788,7 @@ function viewLogin(){
 function viewSettings(){
   const c = S.config;
   const cols = [["sick","ลาป่วย"],["personal","ลากิจส่วนตัว"],["vacation","ลาพักผ่อน/ปี"],["carryCap","ลาพักผ่อนสะสมรวมไม่เกิน"]];
-  const rows = Object.entries(c.types).map(([k,t])=>`<tr><td><b>${esc(t.label)}</b></td>${cols.map(([f])=>`<td><input type="number" min="0" step="1" style="width:84px" data-cfg="${k}.${f}" value="${esc(t[f])}" aria-label="${esc(t.label)} ${f}"></td>`).join("")}</tr>`).join("");
+  const rows = Object.entries(c.types).map(([k,t])=>`<tr><td><b>${esc(t.label)}</b></td>${cols.map(([f])=>`<td><input type="number" min="0" step="1" style="width:84px" data-cfg="${esc(k)}.${f}" value="${esc(t[f])}" aria-label="${esc(t.label)} ${f}"></td>`).join("")}</tr>`).join("");
   const [fs, fe] = fyRange(S.fy);
   const hol = (c.holidays||[]).slice().sort((a,b)=>a.d.localeCompare(b.d));
   const holFy = hol.filter(h=>h.d>=fs && h.d<=fe);
@@ -911,6 +916,15 @@ function readDraft(){
   if(g("f_note")) d.note = g("f_note").value;
   if(g("f_doc")) d.docNo = g("f_doc").value;
 }
+function refreshCalc(){
+  const box=document.getElementById("calcBox"); if(!box) return;
+  if(document.getElementById("f_end")?.value!==S.draft.end) setDateValue("f_end", S.draft.end);
+  const t=document.createElement("template"); t.innerHTML=viewRecord(); const c=t.content;
+  box.innerHTML=c.getElementById("calcBox")?.innerHTML||"";
+  for(const id of ["f_half_lbl","f_days_lbl"]){ const a=document.getElementById(id), b=c.getElementById(id); if(a&&b) a.textContent=b.textContent; }
+  const dy=document.getElementById("f_days"), ndy=c.getElementById("f_days"); if(dy&&ndy) dy.placeholder=ndy.placeholder;
+  const hf=document.getElementById("f_half"), nhf=c.getElementById("f_half"); if(hf&&nhf){ hf.disabled=nhf.disabled; hf.value=S.draft.half; }
+}
 function captureStaffForm(){
   const e=S.editStaff; if(!e) return; const g=id=>document.getElementById(id);
   if(g("s_name")) e.name=g("s_name").value; if(g("s_pos")) e.position=g("s_pos").value; if(g("s_level")) e.level=g("s_level").value; if(g("s_group")) e.group=g("s_group").value; if(g("s_section") && !g("s_section").disabled) e.section=g("s_section").value; else if(g("s_section")) e.section="";
@@ -918,7 +932,12 @@ function captureStaffForm(){
 }
 document.addEventListener("change", ev => {
   const id = ev.target.id || ev.target.name;
-  if(S.view==="record" && /^f_/.test(id)){ readDraft(); if(["f_start_txt","f_end_txt","f_half","f_kind","f_staff","f_emerg"].includes(id)) { if(id!=="f_days") S.draft.daysOverride=""; } render(); }
+  if(S.view==="record" && /^f_/.test(id)){
+    readDraft();
+    if(["f_start_txt","f_end_txt","f_half","f_kind","f_staff","f_emerg"].includes(id)) S.draft.daysOverride="";
+    // text fields: patch in place, a full re-render here would swallow a click on the save button
+    if(["f_start_txt","f_end_txt","f_note","f_doc","f_days"].includes(id)) refreshCalc(); else render();
+  }
   if(id==="pageSize"){ S.pageSize=Number(ev.target.value)||10; try{ localStorage.setItem("leave.pageSize", S.pageSize); }catch(e){} resetPages(); render(); }
   if(id==="ftype"){ S.filterType=ev.target.value; resetPages(); render(); }
   if(id==="fgroup"){ S.filterGroup=ev.target.value; resetPages(); render(); }
@@ -945,7 +964,7 @@ document.addEventListener("input", ev => {
   else if(id==="aq"){ S.aq=ev.target.value; resetPages(); render(); }
   else if(id==="lg_user"){ S.lgUser=ev.target.value; }
   else if(id==="h_n"){ S.hn=ev.target.value; }
-  else if(S.view==="record" && (id==="f_note"||id==="f_doc"||id==="f_days")){ readDraft(); if(id==="f_days"){ render(); } }
+  else if(S.view==="record" && (id==="f_note"||id==="f_doc"||id==="f_days")){ readDraft(); if(id==="f_days") refreshCalc(); }
 
 });
 

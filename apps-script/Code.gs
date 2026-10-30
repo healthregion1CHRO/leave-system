@@ -27,14 +27,17 @@ var DEFAULT_TYPES = [
   ['temp', 'ลูกจ้างชั่วคราว', 30, 10, 10, 15]
 ];
 var DEFAULT_HOLIDAYS = [
+  ['2026-10-13', 'วันนวมินทรมหาราช'], ['2026-10-23', 'วันปิยมหาราช'],
   ['2026-12-07', 'ชดเชยวันคล้ายวันพระบรมราชสมภพ ร.9 / วันพ่อแห่งชาติ'],
   ['2026-12-10', 'วันรัฐธรรมนูญ'], ['2026-12-31', 'วันสิ้นปี'], ['2027-01-01', 'วันขึ้นปีใหม่'],
+  ['2027-02-22', 'ชดเชยวันมาฆบูชา'],
   ['2027-04-06', 'วันจักรี'], ['2027-04-13', 'วันสงกรานต์'], ['2027-04-14', 'วันสงกรานต์'],
-  ['2027-04-15', 'วันสงกรานต์'], ['2027-05-04', 'วันฉัตรมงคล'],
-  ['2027-06-03', 'วันเฉลิมพระชนมพรรษาสมเด็จพระราชินี'], ['2027-07-28', 'วันเฉลิมพระชนมพรรษา ร.10'],
-  ['2027-08-12', 'วันแม่แห่งชาติ']
+  ['2027-04-15', 'วันสงกรานต์'], ['2027-05-04', 'วันฉัตรมงคล'], ['2027-05-20', 'วันวิสาขบูชา'],
+  ['2027-06-03', 'วันเฉลิมพระชนมพรรษาสมเด็จพระราชินี'], ['2027-07-19', 'วันเข้าพรรษา'],
+  ['2027-07-28', 'วันเฉลิมพระชนมพรรษา ร.10'], ['2027-08-12', 'วันแม่แห่งชาติ']
 ];
 var KIND_CODES = { sick: 1, personal: 1, vacation: 1 };
+var KIND_ALIASES = { 'ลาป่วย': 'sick', 'ลากิจ': 'personal', 'ลากิจส่วนตัว': 'personal', 'ลาพักผ่อน': 'vacation' };
 var SESSION_SECONDS = 6 * 60 * 60;
 var MAX_FAILS = 5;
 
@@ -52,7 +55,7 @@ function setupSystem() {
   var ui = SpreadsheetApp.getUi();
   var ss = SpreadsheetApp.getActive();
   ensureSheet_(ss, SH.STAFF, STAFF_HEAD, [6, 7, 9]);
-  ensureSheet_(ss, SH.LEAVES, LEAVE_HEAD, [6, 7]);
+  ensureSheet_(ss, SH.LEAVES, LEAVE_HEAD, [6, 7, 11, 12]);
   ensureSheet_(ss, SH.CARRY, CARRY_HEAD, []);
   var t = ensureSheet_(ss, SH.TYPES, TYPES_HEAD, []);
   if (t.getLastRow() < 2) t.getRange(2, 1, DEFAULT_TYPES.length, 6).setValues(DEFAULT_TYPES);
@@ -78,7 +81,7 @@ function setupSystem() {
 }
 
 function menuHashPending() {
-  var n = hashPending_();
+  var n = withLock_(hashPending_);
   SpreadsheetApp.getUi().alert(n ? ('เข้ารหัสเลขบัตรแล้ว ' + n + ' คน และลบเลขบัตรออกจากชีตแล้ว') : 'ไม่มีเลขบัตรที่รอเข้ารหัส');
 }
 
@@ -96,28 +99,32 @@ function doGet() {
 
 // ---------------------------------------------------------------- API: เข้าสู่ระบบ
 function login(username, password) {
-  var key = 'f_' + normName_(username);
+  var key = 'f_' + normName_(username).slice(0, 200);
   var cache = CacheService.getScriptCache();
   var fails = Number(cache.get(key) || 0);
   if (fails >= MAX_FAILS) throw new Error('ใส่รหัสผิดเกิน ' + MAX_FAILS + ' ครั้ง กรุณารอ 15 นาทีแล้วลองใหม่');
-  hashPending_();
+  if (staffRows_().some(function (r) { return r.pendingCid || !r.id; })) withLock_(hashPending_);
   var want = normName_(username);
   var pw = String(password || '');
   var cands = staffRows_().filter(function (r) { return normName_(r.name) === want && r.hash; });
   var hit = null;
-  cands.forEach(function (r) {
-    if (hit) return;
-    if (hash_(r.salt, pw) === r.hash || hash_(r.salt, digits_(pw)) === r.hash) hit = r;
-  });
+  cands.forEach(function (r) { if (!hit && pwMatches_(r, pw)) hit = r; });
   if (!hit) {
     cache.put(key, String(fails + 1), 900);
     throw new Error('ชื่อ-นามสกุลหรือรหัสผ่านไม่ถูกต้อง');
   }
   cache.remove(key);
   var token = Utilities.getUuid() + Utilities.getUuid();
-  cache.put('s_' + token, JSON.stringify({ id: hit.id, role: hit.role }), SESSION_SECONDS);
-  setStaffCell_(hit.row, 13, new Date());
-  return { token: token, mustChange: hit.mustChange, data: buildData_({ id: hit.id, role: hit.role }) };
+  var sess = { id: hit.id, role: hit.role, v: hit.salt };
+  cache.put('s_' + token, JSON.stringify(sess), SESSION_SECONDS);
+  withLock_(function () { setStaffCell_(findStaff_(hit.id).row, 13, new Date()); });
+  return { token: token, mustChange: hit.mustChange, data: buildData_(sess) };
+}
+
+// รหัสเริ่มต้น (เลขบัตร) พิมพ์มีขีด/เว้นวรรคได้ แต่หลังเปลี่ยนรหัสแล้วต้องตรงทุกตัวอักษร
+function pwMatches_(r, pw) {
+  pw = String(pw || '');
+  return hash_(r.salt, pw) === r.hash || (r.mustChange && hash_(r.salt, digits_(pw)) === r.hash);
 }
 
 function logout(token) { CacheService.getScriptCache().remove('s_' + token); return true; }
@@ -126,17 +133,18 @@ function bootstrap(token) { return { data: buildData_(session_(token)) }; }
 
 function changePassword(token, oldPw, newPw) {
   var s = session_(token);
-  var r = findStaff_(s.id);
-  if (hash_(r.salt, String(oldPw)) !== r.hash && hash_(r.salt, digits_(oldPw)) !== r.hash) throw new Error('รหัสผ่านเดิมไม่ถูกต้อง');
   newPw = String(newPw || '');
   if (newPw.length < 8) throw new Error('รหัสผ่านใหม่ต้องยาวอย่างน้อย 8 ตัวอักษร');
   if (/^\d{13}$/.test(newPw)) throw new Error('รหัสผ่านใหม่ห้ามเป็นตัวเลข 13 หลัก (เลขบัตรประชาชน)');
   var salt = Utilities.getUuid();
   withLock_(function () {
-    setStaffCell_(r.row, 10, salt);
-    setStaffCell_(r.row, 11, hash_(salt, newPw));
-    setStaffCell_(r.row, 12, false);
+    var r = findStaff_(s.id); // หาแถวภายใน lock เพราะแถวอาจเลื่อนเมื่อมีการลบบุคลากร
+    if (r.salt !== s.v) throw new Error('SESSION: รหัสผ่านถูกเปลี่ยนแล้ว กรุณาเข้าสู่ระบบใหม่');
+    if (!pwMatches_(r, oldPw)) throw new Error('รหัสผ่านเดิมไม่ถูกต้อง');
+    sheet_(SH.STAFF).getRange(r.row, 10, 1, 3).setValues([[salt, hash_(salt, newPw), false]]);
   });
+  s.v = salt; // session ปัจจุบันใช้ต่อได้ session อื่นของบัญชีนี้หมดอายุ
+  CacheService.getScriptCache().put('s_' + token, JSON.stringify(s), SESSION_SECONDS);
   return true;
 }
 
@@ -164,7 +172,10 @@ function saveStaff(token, st) {
     } else {
       if (!cid) throw new Error('กรอกเลขบัตรประชาชนเพื่อใช้เป็นรหัสผ่านเริ่มต้น');
       var salt2 = Utilities.getUuid();
-      appendStaff_({ name: name, position: st.position, level: st.level, group: st.group, section: st.section, ptype: ptype, role: role }, salt2, hash_(salt2, cid));
+      var nid = appendStaff_({ name: name, position: st.position, level: st.level, group: st.group, section: st.section, ptype: ptype, role: role }, salt2, hash_(salt2, cid));
+      // บุคลากรใหม่ไม่มีวันลาพักผ่อนสะสมจากปีก่อน: บันทึกยอดยกมา 0 ไม่ให้ระบบคำนวณย้อนไปถึงปีเริ่มต้น
+      var fyNow = fyOf_(Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd'));
+      if (fyNow > (Number(getSetting_('startFY')) || 2570)) sheet_(SH.CARRY).appendRow([nid, name, fyNow, '', '', 0]);
     }
   });
   return { data: buildData_(s) };
@@ -202,8 +213,12 @@ function addLeave(token, l) {
   withLock_(function () {
     var r = findStaff_(l.staffId);
     var me = findStaff_(s.id);
-    sheet_(SH.LEAVES).appendRow([Utilities.getUuid(), r.id, r.name, l.kind, !!l.emergency, l.start, l.end,
-      l.start === l.end ? (l.half || 'full') : 'full', days, fyOf_(l.start), String(l.note || ''), String(l.docNo || ''), me.name, new Date()]);
+    var sh = sheet_(SH.LEAVES), row = sh.getLastRow() + 1;
+    if (row > sh.getMaxRows()) sh.insertRowAfter(sh.getMaxRows());
+    // วันที่ เลขที่ใบลา และหมายเหตุ เก็บเป็นข้อความ (กัน 12/2569 กลายเป็นวันที่ หรือ = กลายเป็นสูตร)
+    ['F', 'G', 'K', 'L'].forEach(function (c) { sh.getRange(c + row).setNumberFormat('@'); });
+    sh.getRange(row, 1, 1, 14).setValues([[Utilities.getUuid(), r.id, r.name, l.kind, !!l.emergency, l.start, l.end,
+      l.start === l.end ? (l.half || 'full') : 'full', days, fyOf_(l.start), String(l.note || ''), String(l.docNo || ''), me.name, new Date()]]);
   });
   return { data: buildData_(s) };
 }
@@ -263,6 +278,7 @@ function deleteHoliday(token, d) {
 function exportSheet(token, title, rows) {
   var s = requireHR_(token);
   var name = String(title || 'สรุปวันลา').replace(/[\[\]\*\?\/\\:]/g, ' ').slice(0, 90);
+  if (Object.keys(SH).some(function (k) { return SH[k] === name.trim(); })) throw new Error('ชื่อชีตซ้ำกับชีตของระบบ');
   if (!rows || !rows.length) throw new Error('ไม่มีข้อมูลให้ส่งออก');
   var width = rows[0].length;
   rows = rows.map(function (r) { var x = r.slice(0, width); while (x.length < width) x.push(''); return x; });
@@ -281,6 +297,7 @@ function buildData_(s) {
   var me = null;
   staff.forEach(function (r) { if (r.id === s.id) me = r; });
   if (!me) throw new Error('SESSION: ไม่พบบัญชีของคุณ กรุณาเข้าสู่ระบบใหม่');
+  if (me.salt !== s.v) throw new Error('SESSION: รหัสผ่านถูกเปลี่ยน กรุณาเข้าสู่ระบบใหม่');
   var isHR = me.role === 'HR';
   var pub = function (r) {
     var o = { id: r.id, name: r.name, position: r.position, level: r.level, group: r.group, section: r.section, ptype: r.ptype, role: r.role };
@@ -288,7 +305,8 @@ function buildData_(s) {
     return o;
   };
   var leaves = rowsOf_(SH.LEAVES).map(function (x) {
-    return { id: String(x[0]), staffId: String(x[1]), kind: String(x[3]), emergency: x[4] === true || String(x[4]).toUpperCase() === 'TRUE',
+    var k = String(x[3]).trim();
+    return { id: String(x[0]), staffId: String(x[1]), kind: KIND_ALIASES[k] || k, emergency: x[4] === true || String(x[4]).toUpperCase() === 'TRUE',
       start: isoCell_(x[5]), end: isoCell_(x[6]), half: String(x[7] || 'full'), days: Number(x[8]) || 0, fy: Number(x[9]) || fyOf_(isoCell_(x[5])),
       note: String(x[10] || ''), docNo: String(x[11] || ''), recordedBy: String(x[12] || '') };
   });
@@ -320,6 +338,7 @@ function session_(token) {
 function requireHR_(token) {
   var s = session_(token);
   var r = findStaff_(s.id);
+  if (r.salt !== s.v) throw new Error('SESSION: รหัสผ่านถูกเปลี่ยน กรุณาเข้าสู่ระบบใหม่');
   if (r.role !== 'HR') throw new Error('เฉพาะเจ้าหน้าที่ HR เท่านั้น');
   return s;
 }
@@ -351,9 +370,10 @@ function findStaff_(id, rows) {
   throw new Error('ไม่พบบุคลากรในระบบ');
 }
 function appendStaff_(st, salt, hash) {
-  var sh = sheet_(SH.STAFF);
-  sh.appendRow(['s' + Utilities.getUuid().slice(0, 8), st.name, st.position || '', st.level || '', st.group || '', st.section || '',
+  var sh = sheet_(SH.STAFF), id = 's' + Utilities.getUuid().slice(0, 8);
+  sh.appendRow([id, st.name, st.position || '', st.level || '', st.group || '', st.section || '',
     typeCode_(st.ptype), st.role === 'HR' ? 'HR' : 'บุคลากร', '', salt, hash, true, '']);
+  return id;
 }
 function setStaffCell_(row, col, val) { sheet_(SH.STAFF).getRange(row, col).setValue(val); }
 function hashPending_() {
@@ -431,7 +451,8 @@ function validCid_(id) {
   return (11 - (sum % 11)) % 10 === Number(id.charAt(12));
 }
 function normName_(n) {
-  return String(n || '').replace(/\s+/g, ' ').trim()
+  // NFKC ให้ "ำ" กับ "ํา" ตรงกัน และตัดอักขระล่องหน (zero-width) ที่ติดมากับการคัดลอก
+  return String(n || '').normalize('NFKC').replace(/[​-‍﻿]/g, '').replace(/\s+/g, ' ').trim()
     .replace(/^(นางสาว|นาย|นาง|น\.ส\.|ด\.ช\.|ด\.ญ\.|ดร\.|ว่าที่\s?ร\.?ต\.?(หญิง)?)\s*/, '')
     .replace(/\s+/g, '').toLowerCase();
 }
@@ -441,13 +462,14 @@ function typeCode_(v) {
   if (map[s]) return map[s];
   if (['gov', 'emp', 'moph', 'temp'].indexOf(s) >= 0) return s;
   if (/^พนักงานกระทรวง|^พกส/.test(s)) return 'moph';
-  if (/^พนักงานราชการ/.test(s)) return 'emp';
+  if (/^พนักงานราชการ|^พนง\.?\s?ราชการ/.test(s)) return 'emp';
+  if (/^ลูกจ้างประจำ/.test(s)) return 'gov'; // สิทธิ์ลาตามระเบียบกระทรวงการคลังใกล้เคียงข้าราชการ
   if (/^ลูกจ้าง/.test(s)) return 'temp';
   return 'gov';
 }
 function isIso_(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')); }
 function isoCell_(v) {
-  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  if (v instanceof Date) return Utilities.formatDate(v, SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd');
   var s = String(v || '').trim();
   return isIso_(s) ? s : '';
 }
