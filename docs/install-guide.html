@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>คู่มือติดตั้งระบบวันลา</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600&family=Sarabun:wght@400;600;700&display=swap">
+<style>
+:root{--bg:#f3f7f6;--card:#fff;--ink:#0f2a2e;--muted:#5a6f72;--line:#dbe5e3;--accent:#0f9c7d;--accent-soft:#d3f2e8;--band:#0b3a3f;--warn:#b77300;--warn-soft:#fdefd3;--danger:#c62a1d;--danger-soft:#fde4e1;--code:#eef3f2}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1416;--card:#122024;--ink:#e5f2ef;--muted:#93aba7;--line:#24383c;--accent:#36d0a6;--accent-soft:#163b33;--band:#08262a;--warn:#f4c35c;--warn-soft:#3a2e15;--danger:#ff8b7d;--danger-soft:#3e1f1b;--code:#18292d;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16.5px/1.7 "Sarabun","TH Sarabun New",Tahoma,sans-serif}
+header{background:linear-gradient(120deg,var(--band),#11545a);color:#eafaf6;padding:28px max(16px,env(safe-area-inset-left)) 24px}
+header .in,main{max-width:860px;margin:0 auto}
+h1,h2,h3{font-family:"Kanit",sans-serif;font-weight:500;line-height:1.3}
+h1{margin:0 0 6px;font-size:1.7rem}
+header p{margin:0;color:#a9cfc9}
+main{padding:24px max(16px,env(safe-area-inset-left)) 60px;display:flex;flex-direction:column;gap:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px}
+.step{display:grid;grid-template-columns:44px 1fr;gap:14px}
+.num{width:44px;height:44px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;font:600 1.2rem "Kanit",sans-serif}
+.step h2{margin:6px 0 8px;font-size:1.25rem}
+ol,ul{margin:6px 0;padding-left:22px}
+li{margin:4px 0}
+b.ui{background:var(--code);border:1px solid var(--line);border-radius:6px;padding:0 6px;font-weight:600;white-space:nowrap}
+code{background:var(--code);border-radius:6px;padding:1px 6px;font-size:.92em}
+.note{border-radius:12px;padding:12px 16px;background:var(--accent-soft);margin-top:10px}
+.warn{background:var(--warn-soft)}
+.danger{background:var(--danger-soft)}
+.files{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:8px}
+.files div{border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.files b{font-family:"Kanit",sans-serif;font-weight:500}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+td,th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600}
+.tw{overflow-x:auto}
+</style>
+</head>
+<body>
+<header><div class="in"><h1>คู่มือติดตั้งระบบวันลาบุคลากร</h1><p>Google Sheets + Apps Script · ใช้เวลาประมาณ 15 นาที · ทำครั้งเดียว</p></div></header>
+<main>
+
+<div class="card"><h3 style="margin-top:0">ไฟล์ที่ได้รับ</h3>
+<div class="files">
+  <div><b>Code.gs</b><br><span style="color:var(--muted)">โค้ดฝั่งเซิร์ฟเวอร์ (ล็อกอิน สิทธิ์ บันทึกข้อมูล)</span></div>
+  <div><b>Index.html</b><br><span style="color:var(--muted)">หน้าเว็บของระบบ</span></div>
+  <div><b>appsscript.json</b><br><span style="color:var(--muted)">ค่าตั้งโครงการ (เขตเวลาไทย)</span></div>
+</div>
+<div class="note">สิ่งที่ต้องมี: บัญชี Google ของหน่วยงาน (แนะนำให้ใช้บัญชีกลางของงาน HR ไม่ใช่บัญชีส่วนตัว เพราะข้อมูลทั้งหมดจะอยู่ใน Google Drive ของบัญชีนี้)</div>
+</div>
+
+<div class="card step"><div class="num">1</div><div>
+<h2>สร้างไฟล์ Google Sheets</h2>
+<ol>
+<li>เข้า <b class="ui">sheets.google.com</b> ด้วยบัญชีของหน่วยงาน</li>
+<li>กด <b class="ui">+ สเปรดชีตเปล่า</b> แล้วตั้งชื่อไฟล์ เช่น <code>ระบบวันลาบุคลากร</code></li>
+</ol>
+</div></div>
+
+<div class="card step"><div class="num">2</div><div>
+<h2>วางโค้ดใน Apps Script</h2>
+<ol>
+<li>ในไฟล์ชีต เลือกเมนู <b class="ui">ส่วนขยาย</b> → <b class="ui">Apps Script</b> (Extensions → Apps Script)</li>
+<li>ไฟล์ <b>Code.gs</b> ที่เปิดอยู่: ลบโค้ดเดิมทั้งหมด แล้ววางเนื้อหาจากไฟล์ <b>Code.gs</b> ที่ได้รับ</li>
+<li>กดเครื่องหมาย <b class="ui">+</b> ข้างคำว่า "ไฟล์" → <b class="ui">HTML</b> → ตั้งชื่อว่า <code>Index</code> (ตัว I ใหญ่ ไม่ต้องพิมพ์ .html) → ลบเนื้อหาเดิม แล้ววางเนื้อหาจากไฟล์ <b>Index.html</b></li>
+<li>(แนะนำ) กด <b class="ui">⚙ การตั้งค่าโปรเจ็กต์</b> → ติ๊ก <b class="ui">แสดงไฟล์ Manifest "appsscript.json"</b> → กลับไปที่ไฟล์ <code>appsscript.json</code> แล้ววางเนื้อหาจากไฟล์ที่ได้รับ</li>
+<li>กด <b class="ui">💾 บันทึกโปรเจ็กต์</b> (Ctrl+S)</li>
+</ol>
+</div></div>
+
+<div class="card step"><div class="num">3</div><div>
+<h2>ตั้งค่าเริ่มต้นและสร้างบัญชี HR คนแรก</h2>
+<ol>
+<li>กลับไปที่แท็บ Google Sheets แล้ว <b>รีเฟรชหน้า</b> (F5) รอสักครู่จะมีเมนู <b class="ui">ระบบวันลา</b> ขึ้นบนแถบเมนู</li>
+<li>เลือก <b class="ui">ระบบวันลา</b> → <b class="ui">1) ตั้งค่าเริ่มต้นระบบ</b></li>
+<li>ครั้งแรก Google จะขออนุญาต: กด <b class="ui">ดำเนินการต่อ</b> → เลือกบัญชี → ถ้าขึ้นว่า "Google ไม่ได้ยืนยันแอปนี้" ให้กด <b class="ui">ขั้นสูง</b> → <b class="ui">ไปที่ … (ไม่ปลอดภัย)</b> → <b class="ui">อนุญาต</b> <br><span style="color:var(--muted)">ข้อความนี้ขึ้นเพราะเป็นสคริปต์ที่หน่วยงานสร้างเอง ไม่ได้ส่งให้ Google ตรวจ สคริปต์ทำงานเฉพาะในไฟล์ชีตนี้</span></li>
+<li>เลือกเมนูเดิมอีกครั้ง (ถ้าครั้งแรกหยุดที่การขออนุญาต) ระบบจะถาม <b>ชื่อ-นามสกุล</b> และ <b>เลขบัตรประชาชน</b> ของคุณ เพื่อสร้างบัญชี HR คนแรก</li>
+</ol>
+<div class="note">ระบบจะสร้างชีต 6 แผ่นให้อัตโนมัติ: บุคลากร · การลา · ยอดยกมา · สิทธิ์การลา · วันหยุด · ตั้งค่า (ห้ามเปลี่ยนชื่อชีตหรือลำดับคอลัมน์)</div>
+</div></div>
+
+<div class="card step"><div class="num">4</div><div>
+<h2>เปิดใช้งานเป็นเว็บแอป (Deploy)</h2>
+<ol>
+<li>ในหน้า Apps Script กดปุ่มสีน้ำเงิน <b class="ui">การทำให้ใช้งานได้</b> (Deploy) มุมขวาบน → <b class="ui">การทำให้ใช้งานได้รายการใหม่</b> (New deployment)</li>
+<li>กดรูปเฟือง ⚙ ข้าง "เลือกประเภท" → <b class="ui">เว็บแอป</b> (Web app)</li>
+<li>ตั้งค่าดังนี้
+  <ul>
+  <li>คำอธิบาย: <code>ระบบวันลา v1</code></li>
+  <li><b>ดำเนินการในฐานะ</b> (Execute as): <b class="ui">ฉัน</b> (Me)</li>
+  <li><b>ผู้ที่มีสิทธิ์เข้าถึง</b> (Who has access): <b class="ui">ทุกคน</b> (Anyone)</li>
+  </ul></li>
+<li>กด <b class="ui">ทำให้ใช้งานได้</b> → คัดลอก <b>URL ของเว็บแอป</b> (ลงท้ายด้วย <code>/exec</code>) เก็บไว้ นี่คือลิงก์เข้าระบบ</li>
+</ol>
+<div class="note warn">ต้องเลือก "ทุกคน" เพื่อให้บุคลากรที่ไม่มีบัญชี Google ของหน่วยงานเข้าได้ ข้อมูลยังปลอดภัย เพราะทุกคนต้องล็อกอินด้วยชื่อและรหัสผ่าน และเห็นเฉพาะข้อมูลของตนเอง ไฟล์ชีตไม่ได้ถูกแชร์ให้ใคร</div>
+</div></div>
+
+<div class="card step"><div class="num">5</div><div>
+<h2>เข้าระบบครั้งแรกและตั้งค่า</h2>
+<ol>
+<li>เปิด URL ที่คัดลอกไว้ → ผู้ใช้งาน = ชื่อ-นามสกุลของคุณ · รหัสผ่าน = เลขบัตรประชาชน</li>
+<li>ระบบจะแนะนำให้ตั้งรหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร) แนะนำให้เปลี่ยนสำหรับบัญชี HR</li>
+<li>แท็บ <b class="ui">ตั้งค่าสิทธิ์และวันหยุด</b>: ตรวจจำนวนวันลาของแต่ละประเภทบุคลากรให้ตรงระเบียบ และเพิ่มวันหยุดทางจันทรคติ (มาฆบูชา วิสาขบูชา อาสาฬหบูชา เข้าพรรษา) และวันหยุดพิเศษตามมติ ครม.</li>
+</ol>
+</div></div>
+
+<div class="card step"><div class="num">6</div><div>
+<h2>เพิ่มรายชื่อบุคลากร</h2>
+<p style="margin:0 0 6px"><b>วิธีที่ 1 — ทีละคนในหน้าเว็บ:</b> แท็บ <b class="ui">รายชื่อบุคลากร</b> → <b class="ui">+ เพิ่มบุคลากร</b> → กรอกข้อมูลและเลขบัตรประชาชน → บันทึก</p>
+<p style="margin:10px 0 6px"><b>วิธีที่ 2 — หลายคนพร้อมกันในชีต:</b> เปิดชีต <b>บุคลากร</b> แล้วกรอกตั้งแต่แถวว่างถัดไป</p>
+<div class="tw"><table>
+<tr><th>คอลัมน์</th><th>กรอก</th><th>ตัวอย่าง</th></tr>
+<tr><td>A id</td><td>เว้นว่าง (ระบบสร้างให้)</td><td></td></tr>
+<tr><td>B ชื่อ-สกุล</td><td>ชื่อ-นามสกุล (ใช้เป็นชื่อผู้ใช้ ห้ามซ้ำ)</td><td>นายสมชาย ดีมาก</td></tr>
+<tr><td>C–F</td><td>ตำแหน่ง · ระดับ · กลุ่มงาน · งาน</td><td>นักวิชาการคอมพิวเตอร์ · ปฏิบัติการ · กลุ่มงานอำนวยการ · งานพัสดุ</td></tr>
+<tr><td>G ประเภทบุคลากร</td><td>ข้าราชการ / พนักงานราชการ / พนักงานกระทรวงสาธารณสุข / ลูกจ้างชั่วคราว</td><td>ข้าราชการ</td></tr>
+<tr><td>H บทบาท</td><td>เว้นว่าง = บุคลากร · พิมพ์ <code>HR</code> สำหรับเจ้าหน้าที่ HR</td><td></td></tr>
+<tr><td>I เลขบัตรประชาชน</td><td>13 หลัก</td><td>1234567890121</td></tr>
+</table></div>
+<p style="margin:10px 0 0">กรอกเสร็จแล้วเลือกเมนู <b class="ui">ระบบวันลา</b> → <b class="ui">2) เข้ารหัสเลขบัตรที่กรอกในชีตบุคลากร</b> ระบบจะเข้ารหัสและ<b>ลบเลขบัตรออกจากชีตทันที</b> (เลขบัตรที่ผิดจะมีหมายเหตุสีส้มที่ช่องนั้น)</p>
+<div class="note danger">อย่ากรอกเลขบัตรทิ้งไว้ในชีตนานเกินจำเป็น และห้ามแก้ไขคอลัมน์ J–K (salt, hash) ด้วยมือ</div>
+</div></div>
+
+<div class="card step"><div class="num">7</div><div>
+<h2>แจ้งบุคลากรให้เข้าใช้งาน</h2>
+<p style="margin:0">ส่ง URL ระบบให้บุคลากร พร้อมข้อความนี้:</p>
+<div class="note" style="background:var(--code)">ระบบตรวจสอบวันลา: [ใส่ลิงก์]<br>ผู้ใช้งาน = ชื่อ-นามสกุลของท่าน (ไม่ต้องใส่คำนำหน้าก็ได้)<br>รหัสผ่าน = เลขบัตรประชาชน 13 หลัก<br>เข้าครั้งแรกแล้วกรุณาตั้งรหัสผ่านใหม่ · ลืมรหัสผ่านติดต่องาน HR</div>
+</div></div>
+
+<div class="card"><h3 style="margin-top:0">การแก้ไขโค้ดภายหลัง (เวอร์ชันใหม่)</h3>
+<ol>
+<li>วางโค้ดใหม่ใน Apps Script แล้วบันทึก</li>
+<li><b class="ui">การทำให้ใช้งานได้</b> → <b class="ui">จัดการการทำให้ใช้งานได้</b> → กดรูปดินสอ ✎ → ช่อง "เวอร์ชัน" เลือก <b class="ui">เวอร์ชันใหม่</b> → <b class="ui">ทำให้ใช้งานได้</b></li>
+<li>ลิงก์เดิมใช้ได้ต่อ ไม่ต้องส่งลิงก์ใหม่</li>
+</ol></div>
+
+<div class="card"><h3 style="margin-top:0">ความปลอดภัยและข้อควรรู้</h3>
+<ul>
+<li>เลขบัตรและรหัสผ่านเก็บแบบเข้ารหัสทางเดียว (SHA-256 + salt + pepper) ไม่มีใครอ่านกลับเป็นตัวเลขจริงได้ รวมถึง HR</li>
+<li>ใส่รหัสผิด 5 ครั้ง ชื่อนั้นจะถูกล็อก 15 นาที · ไม่ได้ใช้งาน 6 ชั่วโมงต้องเข้าสู่ระบบใหม่</li>
+<li>คนที่รู้เลขบัตรประชาชนของผู้อื่นจะเข้าดูข้อมูลการลาของผู้นั้นได้ จึงควรให้ทุกคนเปลี่ยนรหัสผ่านหลังเข้าครั้งแรก (ดูสถานะได้ที่แท็บ "บัญชีผู้ใช้")</li>
+<li>ห้ามแชร์ไฟล์ Google Sheets ให้คนที่ไม่ใช่ผู้ดูแลระบบ · สำรองข้อมูลได้จาก <b class="ui">ไฟล์ → ประวัติเวอร์ชัน</b> หรือ <b class="ui">ไฟล์ → ทำสำเนา</b></li>
+<li>ข้อมูลบุคลากรเป็นข้อมูลส่วนบุคคลตาม PDPA ควรแจ้งวัตถุประสงค์การใช้ข้อมูลให้บุคลากรทราบ</li>
+</ul></div>
+
+<div class="card"><h3 style="margin-top:0">แก้ปัญหาที่พบบ่อย</h3>
+<div class="tw"><table>
+<tr><th>อาการ</th><th>วิธีแก้</th></tr>
+<tr><td>ไม่เห็นเมนู "ระบบวันลา"</td><td>รีเฟรชหน้าชีต รอ 5–10 วินาที ถ้ายังไม่ขึ้นให้ตรวจว่าบันทึกโค้ด Code.gs แล้ว</td></tr>
+<tr><td>เปิดลิงก์แล้วขึ้น "ยังไม่ได้ตั้งค่าระบบ"</td><td>ทำขั้นตอนที่ 3 ก่อน</td></tr>
+<tr><td>หน้าเว็บว่าง / ขึ้นว่าไม่พบ Index</td><td>ตรวจชื่อไฟล์ HTML ต้องเป็น <code>Index</code> ตรงตัวพิมพ์</td></tr>
+<tr><td>แก้โค้ดแล้วหน้าเว็บไม่เปลี่ยน</td><td>ต้องทำ "จัดการการทำให้ใช้งานได้ → เวอร์ชันใหม่" ทุกครั้ง</td></tr>
+<tr><td>บุคลากรเข้าไม่ได้</td><td>ตรวจชื่อ-นามสกุลในชีตบุคลากรให้ตรง (ช่องว่างไม่มีผล) หรือให้ HR กด "รีเซ็ตรหัสผ่าน" ในแท็บบัญชีผู้ใช้</td></tr>
+<tr><td>ขึ้นว่าบุคคลเข้าถึงไม่ได้ / ต้องล็อกอิน Google</td><td>ตอน Deploy ต้องเลือกผู้ที่มีสิทธิ์เข้าถึง = "ทุกคน" (บางองค์กรผู้ดูแล Google Workspace อาจปิดตัวเลือกนี้)</td></tr>
+</table></div></div>
+
+</main>
+</body>
+</html>

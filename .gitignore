@@ -1,0 +1,8 @@
+*.xlsx
+*.csv
+.DS_Store
+.clasp.json
+.clasprc.json
+*.gsheet
+*.gdoc
+desktop.ini
