@@ -144,7 +144,7 @@ function changePassword(token, oldPw, newPw) {
     sheet_(SH.STAFF).getRange(r.row, 10, 1, 3).setValues([[salt, hash_(salt, newPw), false]]);
   });
   rebind_(token, s, salt);
-  return true;
+  return { data: buildData_(s) };
 }
 
 // session ปัจจุบันใช้ต่อได้หลังเปลี่ยนรหัสของตัวเอง ส่วน session อื่นของบัญชีนี้หมดอายุ
@@ -479,11 +479,15 @@ function typeCode_(v) {
 }
 function isIso_(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')); }
 function isoCell_(v) {
-  if (v instanceof Date) return Utilities.formatDate(v, tz_(), 'yyyy-MM-dd');
-  var s = String(v || '').trim();
-  return isIso_(s) ? s : '';
+  var s = v instanceof Date ? Utilities.formatDate(v, tz_(), 'yyyy-MM-dd') : String(v || '').trim();
+  // รับ วว/ดด/ปปปป ที่พิมพ์เองในชีตด้วย (ค.ศ. หรือ พ.ศ.)
+  var m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if (m) s = m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+  if (!isIso_(s)) return '';
+  var y = Number(s.slice(0, 4));
+  return y > 2400 ? (y - 543) + s.slice(4) : s;
 }
 var TZ_;
 function tz_() { return TZ_ || (TZ_ = SpreadsheetApp.getActive().getSpreadsheetTimeZone()); }
-function isoCellOrRaw_(v) { return v instanceof Date ? isoCell_(v) : v; }
+function isoCellOrRaw_(v) { return isoCell_(v) || v; }
 function fyOf_(iso) { var y = Number(iso.slice(0, 4)), m = Number(iso.slice(5, 7)); return (m >= 10 ? y + 1 : y) + 543; }

@@ -324,11 +324,12 @@ const todayIso = () => { const n = new Date(); return `${n.getFullYear()}-${Stri
 const fmtN = n => (Math.round(n*10)/10).toLocaleString("th-TH", {maximumFractionDigits:1});
 const initial = n => { const t=String(n||"").replace(/^(นางสาว|นาย|นาง|น\.ส\.|ดร\.|ว่าที่ ?ร\.?ต\.?)\s*/,"").trim(); const m=t.match(/[ก-ฮA-Za-z]/); return m?m[0]:"•"; };
 const ORG = [
-  {g:"กลุ่มงานยุทธศาสตร์และสารสนเทศ+สุขภาพดิจิทัล", s:["งานยุทธศาสตร์และสารสนเทศ","งานสุขภาพดิจิทัล"]},
+  // names match the live staff sheet (บุคลากร) so filters don't split one group into two
+  {g:"กลุ่มงานยุทธศาสตร์และแผนงาน", s:["งานพัฒนายุทธศาสตร์","งาน Digital Health & Data"]},
   {g:"กลุ่มงานบริหารทรัพยากรบุคคล", s:[]},
-  {g:"กลุ่มงานพัฒนาระบบบริการสุขภาพ", s:["งานพัฒนาระบบบริการสุขภาพ","งานสารนิเทศ"]},
-  {g:"กลุ่มงานการเงินและการคลัง", s:[]},
-  {g:"กลุ่มงานอำนวยการ", s:["งานบริหารและระบบสารบรรณ","งานการเงินและบัญชี","งานกฎหมายและเสริมสร้างวินัยข้าราชการ","งานพัสดุ"]},
+  {g:"งานพัฒนาระบบบริการสุขภาพ", s:[]},
+  {g:"กลุ่มงานบริหารการเงินการคลัง", s:[]},
+  {g:"กลุ่มงานอำนวยการ", s:["งานบริหารและระบบสารบรรณ","งานการเงินและบัญชี","งานกฎหมายและเสริมสร้างวินัยฯ","งานพัสดุ"]},
 ];
 const sectionsOf = g => (ORG.find(o=>o.g===g)||{s:[]}).s;
 const groupOptions = sel => { const names=ORG.map(o=>o.g); const extra = sel && !names.includes(sel) ? [sel] : [];
@@ -687,7 +688,9 @@ function viewStaff(){
 function staffModal(){
   const e = S.editStaff; if(!e) return "";
   const typeOpts = Object.entries(S.config.types).map(([k,v])=>`<option value="${esc(k)}" ${e.ptype===k?"selected":""}>${esc(v.label)}</option>`).join("");
-  const subs = sectionsOf(e.group);
+  // keep a section that isn't in ORG, so editing someone never blanks their งาน
+  const base = sectionsOf(e.group);
+  const subs = e.section && !base.includes(e.section) ? [...base, e.section] : base;
   return `<div class="overlay" data-act="overlay"><form class="modal" id="staffForm" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <div class="m-head"><span class="badge">${e.id?ICON.edit:ICON.user}</span><div><h3 id="mTitle">${e.id?"แก้ไขข้อมูลบุคลากร":"เพิ่มบุคลากรใหม่"}</h3><span class="muted" style="font-size:.85rem">${e.id?esc(e.name):"กรอกข้อมูลแล้วกดบันทึก"}</span></div>
       <span class="spacer"></span><button type="button" class="ghost small" data-act="cancel-staff" aria-label="ปิด">✕</button></div>
@@ -697,7 +700,7 @@ function staffModal(){
       <label class="field"><span>ระดับ</span><select id="s_level"><option value="">— ไม่ระบุ —</option>${levelOptions(e.level)}</select></label>
       <label class="field"><span>กลุ่มงาน</span><select id="s_group"><option value="">— เลือกกลุ่มงาน —</option>${groupOptions(e.group)}</select></label>
       <label class="field"><span>งาน</span>${subs.length
-        ? `<select id="s_section"><option value="">— เลือกงาน —</option>${subs.map(x=>`<option value="${esc(x)}" ${e.section===x?"selected":""}>${esc(x)}</option>`).join("")}</select>`
+        ? `<select id="s_section"><option value="">— เลือกงาน —</option>${subs.map(x=>`<option value="${esc(x)}" ${e.section===x?"selected":""}>${esc(x)}${base.includes(x)?"":" (ข้อมูลเดิม)"}</option>`).join("")}</select>`
         : `<select id="s_section" disabled><option value="">${e.group?"กลุ่มงานนี้ไม่มีงานย่อย":"เลือกกลุ่มงานก่อน"}</option></select>`}</label>
       <label class="field"><span>ประเภทบุคลากร</span><select id="s_type">${typeOpts}</select></label>
       <label class="field"><span>บทบาทในระบบ</span><select id="s_role"><option value="บุคลากร" ${e.role!=="HR"?"selected":""}>บุคลากร (ดูการลาของตนเอง)</option><option value="HR" ${e.role==="HR"?"selected":""}>เจ้าหน้าที่ HR (จัดการทั้งระบบ)</option></select></label>
