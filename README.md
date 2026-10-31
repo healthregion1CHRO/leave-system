@@ -8,7 +8,7 @@
 | โฟลเดอร์ | รายละเอียด |
 |---|---|
 | `apps-script/` | เวอร์ชันหลัก: Google Sheets + Apps Script (ล็อกอินด้วยชื่อ-นามสกุล + เลขบัตรประชาชน) |
-| `claude-artifact/` | เวอร์ชันหน้าเว็บบน claude.ai (ใช้บัญชี claude.ai ในการเข้าถึง) |
+| `tests/` | ชุดทดสอบก่อนขึ้น GitHub (ดูหัวข้อ "ทดสอบก่อนขึ้น GitHub") |
 | `docs/install-guide.html` | คู่มือติดตั้งเวอร์ชัน Apps Script ทีละขั้นตอน |
 
 ## ติดตั้งเวอร์ชัน Apps Script (สรุป)
