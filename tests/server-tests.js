@@ -105,6 +105,14 @@ window.runServerTests = function () {
     ok('typeCode_ map', [tc('ข้าราชการ'), tc('พนักงานกระทรวง'), tc('moph'), tc('พกส.'), tc('ลูกจ้างประจำ'), tc('ลูกจ้างประจํา'), tc('ลูกจ้างชั่วคราว'), tc('พนง.ราชการ')].join() === 'gov,moph,moph,moph,gov,gov,temp,emp', [tc('ลูกจ้างประจํา'), tc('พนง.ราชการ')]);
     d = A.saveTypes(T, { gov: { sick: 60, personal: 45, vacation: 10, carryCap: 20 } }, 2570).data;
     ok('saveTypes', d.config.types.gov.carryCap === 20);
+    // system started a year earlier → a new hire this year gets vacation carry pinned to 0
+    A.saveTypes(T, {}, 2569);
+    const fyNow = A.fyOf_(new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10));
+    d = A.saveStaff(T, { name: 'นายคนใหม่ ปีหน้า', group: 'กลุ่มงานอำนวยการ', ptype: 'ข้าราชการ', cid: cid('320050055555') }).data;
+    const nh = d.staff.find(x => x.name === 'นายคนใหม่ ปีหน้า');
+    ok('new hire after startFY gets carry 0', d.carry.some(c => c.staffId === nh.id && c.fy === fyNow && c.vacation === 0 && c.sick === null), d.carry);
+    A.saveTypes(T, {}, 2570);
+    ok('startFY restored', A.bootstrap(T).data.config.startFY === 2570);
 
     // 11. export guard + export
     ok('export cannot overwrite system sheet', throws(() => A.exportSheet(T, 'บุคลากร', [['a']]), /ซ้ำ/));

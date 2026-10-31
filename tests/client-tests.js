@@ -98,6 +98,18 @@
       const askBtn = document.querySelector('[data-act="ask"]');
       await click(askBtn); await click('[data-act="del-leave"]'); await wait(200);
       ok('delete leave', leaves().length === 2, leaves().length);
+      // vacation card: 10/yr, no carry yet → quota 10; enter carry 5 → quota 15
+      const card = re => [...document.querySelectorAll('.bal')].find(b => re.test(b.innerText) && /รวมสิทธิ์ปีนี้/.test(b.innerText));
+      const vacCard = () => card(/ลาพักผ่อน/);
+      const quotaOf = card => { const m = card.innerText.match(/รวมสิทธิ์ปีนี้\s*([\d.]+)/); return m && Number(m[1]); };
+      ok('vacation quota 10 without carry', quotaOf(vacCard()) === 10, vacCard() && vacCard().innerText.slice(0, 200));
+      await setv('#carry_vacation', '5', 'input'); await click('[data-act="save-carry"]'); await wait(200);
+      const cr = m.ss.getSheetByName('ยอดยกมา')._s.rows.find(r => r[0] === bRow[0]);
+      ok('carry saved to sheet', cr && Number(cr[5]) === 5 && cr[3] === '' && cr[4] === '', JSON.stringify(cr));
+      ok('vacation quota 15 with carry 5', quotaOf(vacCard()) === 15, quotaOf(vacCard()));
+      const sickCard = card(/ลาป่วย/);
+      // remaining sick leaves after the delete: 2–4 Nov (3) + half day 5 Nov (0.5) → used 3.5, left 56.5
+      ok('sick: quota 60, used 3.5, left 56.5', quotaOf(sickCard) === 60 && /56\.5/.test(sickCard.innerText) && /3\.5 วัน/.test(sickCard.innerText), sickCard && sickCard.innerText.replace(/\s+/g, ' ').slice(0, 300));
 
       // settings: add holiday via UI
       await click('[data-act="tab"][data-v="settings"]');

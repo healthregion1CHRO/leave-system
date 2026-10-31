@@ -1,4 +1,4 @@
-# ทดสอบเวอร์ชัน Apps Script ก่อนขึ้น GitHub: รัน Code.gs บนชีตจำลอง และทดสอบ Index.html ใน Chrome แบบ headless
+﻿# ทดสอบเวอร์ชัน Apps Script ก่อนขึ้น GitHub: รัน Code.gs บนชีตจำลอง และทดสอบ Index.html ใน Chrome แบบ headless
 # วิธีใช้:  powershell -ExecutionPolicy Bypass -File tests\run-tests.ps1
 $tests = $PSScriptRoot
 $repo = Split-Path $tests -Parent
