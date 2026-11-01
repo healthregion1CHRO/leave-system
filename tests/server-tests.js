@@ -16,7 +16,7 @@ window.runServerTests = function () {
     m.prompts.push('นายทดสอบ ผู้ดูแล', hrCid);
     A.setupSystem();
     ok('setup creates sheets', ['บุคลากร','การลา','ยอดยกมา','สิทธิ์การลา','วันหยุด','ตั้งค่า'].every(n => sheet(n)));
-    ok('setup holidays incl. new 2570 days', rows('วันหยุด').some(r => r[0] === '2026-10-23') && rows('วันหยุด').length === 18, rows('วันหยุด').length);
+    ok('setup leaves holiday sheet empty (header only)', rows('วันหยุด').length === 1, rows('วันหยุด').length);
     ok('setup HR created', rows('บุคลากร')[1][7] === 'HR');
     A.setupSystem(); // rerun safe
     ok('setup rerun keeps one HR', rows('บุคลากร').filter(r => r[7] === 'HR').length === 1);
@@ -90,6 +90,7 @@ window.runServerTests = function () {
     ok('saveCarry clear deletes row', !d.carry.some(c => c.staffId === st.id));
 
     // 9. holidays typed by hand
+    sheet('วันหยุด').appendRow(['2027-05-20', 'วันวิสาขบูชา']);
     sheet('วันหยุด').appendRow(['20/05/2570', 'พิมพ์เอง พ.ศ.']);
     sheet('วันหยุด').appendRow([new Date(Date.UTC(2027, 0, 4, 17)), 'เป็น Date (Bangkok 5 Jan)']);
     d = A.bootstrap(T).data;

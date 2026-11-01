@@ -8,6 +8,7 @@
   const HR_CID = cid('110170012345'), ST_CID = cid('320050011111');
   m.prompts.push('นายทดสอบ ผู้ดูแล', HR_CID); A.setupSystem();
   const T0 = A.login('ทดสอบ ผู้ดูแล', HR_CID).token;
+  A.addHoliday(T0, '2026-10-23', 'วันปิยมหาราช'); // no default holidays any more — seed one for the holiday test
   A.saveStaff(T0, { name: 'นางสาวบานเย็น แสงแก้ว', level: 'ชำนาญการ', group: 'กลุ่มงานยุทธศาสตร์และสารสนเทศ+สุขภาพดิจิทัล', section: 'งานสุขภาพดิจิทัล', ptype: 'ข้าราชการ', cid: ST_CID });
   A.saveStaff(T0, { name: 'นายกิตติ ก้อนแก้ว', group: 'กลุ่มงานอำนวยการ', section: 'งานที่ไม่อยู่ในรายการ', ptype: 'พนักงานกระทรวง', cid: cid('320050044444') });
   m.cache.clear();

@@ -26,16 +26,7 @@ var DEFAULT_TYPES = [
   ['moph', 'พนักงานกระทรวงสาธารณสุข', 30, 10, 10, 15],
   ['temp', 'ลูกจ้างชั่วคราว', 30, 10, 10, 15]
 ];
-var DEFAULT_HOLIDAYS = [
-  ['2026-10-13', 'วันนวมินทรมหาราช'], ['2026-10-23', 'วันปิยมหาราช'],
-  ['2026-12-07', 'ชดเชยวันคล้ายวันพระบรมราชสมภพ ร.9 / วันพ่อแห่งชาติ'],
-  ['2026-12-10', 'วันรัฐธรรมนูญ'], ['2026-12-31', 'วันสิ้นปี'], ['2027-01-01', 'วันขึ้นปีใหม่'],
-  ['2027-02-22', 'ชดเชยวันมาฆบูชา'],
-  ['2027-04-06', 'วันจักรี'], ['2027-04-13', 'วันสงกรานต์'], ['2027-04-14', 'วันสงกรานต์'],
-  ['2027-04-15', 'วันสงกรานต์'], ['2027-05-04', 'วันฉัตรมงคล'], ['2027-05-20', 'วันวิสาขบูชา'],
-  ['2027-06-03', 'วันเฉลิมพระชนมพรรษาสมเด็จพระราชินี'], ['2027-07-19', 'วันเข้าพรรษา'],
-  ['2027-07-28', 'วันเฉลิมพระชนมพรรษา ร.10'], ['2027-08-12', 'วันแม่แห่งชาติ']
-];
+var DEFAULT_HOLIDAYS = []; // HR เพิ่มวันหยุดราชการเองในหน้าตั้งค่า หรือในชีต วันหยุด
 var KIND_CODES = { sick: 1, personal: 1, vacation: 1 };
 var KIND_ALIASES = { 'ลาป่วย': 'sick', 'ลากิจ': 'personal', 'ลากิจส่วนตัว': 'personal', 'ลาพักผ่อน': 'vacation' };
 var SESSION_SECONDS = 6 * 60 * 60;
@@ -60,7 +51,7 @@ function setupSystem() {
   var t = ensureSheet_(ss, SH.TYPES, TYPES_HEAD, []);
   if (t.getLastRow() < 2) t.getRange(2, 1, DEFAULT_TYPES.length, 6).setValues(DEFAULT_TYPES);
   var h = ensureSheet_(ss, SH.HOLIDAYS, HOL_HEAD, [1]);
-  if (h.getLastRow() < 2) h.getRange(2, 1, DEFAULT_HOLIDAYS.length, 2).setValues(DEFAULT_HOLIDAYS);
+  if (h.getLastRow() < 2 && DEFAULT_HOLIDAYS.length) h.getRange(2, 1, DEFAULT_HOLIDAYS.length, 2).setValues(DEFAULT_HOLIDAYS);
   var s = ensureSheet_(ss, SH.SETTINGS, ['ค่า', 'ข้อมูล'], []);
   if (s.getLastRow() < 2) s.getRange(2, 1, 1, 2).setValues([['startFY', 2570]]);
   pepper_();
