@@ -491,3 +491,31 @@ var TZ_;
 function tz_() { return TZ_ || (TZ_ = SpreadsheetApp.getActive().getSpreadsheetTimeZone()); }
 function isoCellOrRaw_(v) { return isoCell_(v) || v; }
 function fyOf_(iso) { var y = Number(iso.slice(0, 4)), m = Number(iso.slice(5, 7)); return (m >= 10 ? y + 1 : y) + 543; }
+
+
+// ---------------------------------------------------------------- API สำหรับหน้าเว็บบน GitHub Pages
+// หน้าเว็บภายนอกส่ง POST (Content-Type: text/plain) มาที่ลิงก์ /exec เดิม เช่น {"fn":"login","args":["ชื่อ","รหัส"]}
+// ตอบกลับเป็น JSON {ok:true,result:...} หรือ {ok:false,error:"ข้อความ"}
+// ลิงก์ /exec เมื่อเปิดในเบราว์เซอร์ยังเข้า doGet แสดงหน้าเว็บเดิมเหมือนเดิม
+function doPost(e) {
+  var out;
+  try {
+    var req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    var fn = apiFn_(String(req.fn || ''));
+    if (!fn) throw new Error('ไม่รู้จักคำสั่ง: ' + req.fn);
+    out = { ok: true, result: fn.apply(null, Array.isArray(req.args) ? req.args : []) };
+  } catch (err) {
+    out = { ok: false, error: String((err && err.message) || err) };
+  }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+// เปิดให้เรียกจากภายนอกได้เฉพาะฟังก์ชันที่หน้าเว็บใช้ (ฟังก์ชันที่ลงท้ายด้วย _ เรียกไม่ได้)
+function apiFn_(name) {
+  var api = {
+    login: login, logout: logout, bootstrap: bootstrap, changePassword: changePassword,
+    saveStaff: saveStaff, deleteStaff: deleteStaff, resetPassword: resetPassword,
+    addLeave: addLeave, deleteLeave: deleteLeave, saveCarry: saveCarry, saveTypes: saveTypes,
+    addHoliday: addHoliday, deleteHoliday: deleteHoliday, exportSheet: exportSheet
+  };
+  return Object.prototype.hasOwnProperty.call(api, name) ? api[name] : null;
+}
