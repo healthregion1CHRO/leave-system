@@ -117,6 +117,23 @@
       if ($('#h_d_txt')) { await setv('#h_d_txt', '05/12/2569'); await setv('#h_n', 'ทดสอบ', 'input'); $('#holForm').requestSubmit(); await wait(200); }
       ok('add holiday via UI', m.ss.getSheetByName('วันหยุด')._s.rows.some(r => r[0] === '2026-12-05'));
 
+      // settings: leave entitlement rows are read-only until แก้ไข
+      const typeRow = code => m.ss.getSheetByName('สิทธิ์การลา')._s.rows.find(r => r[0] === code);
+      ok('types read-only by default', !$('[data-cfg]') && document.querySelectorAll('[data-act="edit-type"]').length === 4);
+      await click('[data-act="edit-type"][data-id="emp"]');
+      ok('edit shows inputs for one row only', document.querySelectorAll('[data-cfg]').length === 4 && !!$('[data-cfg="emp.sick"]') && !!$('[data-act="save-type"]'));
+      ok('other edit buttons disabled while editing', $('[data-act="edit-type"][data-id="gov"]').disabled === true);
+      await setv('[data-cfg="emp.personal"]', '12', 'input');
+      await click('[data-act="cancel-type"]');
+      ok('cancel discards', !$('[data-cfg]') && Number(typeRow('emp')[3]) === 10, JSON.stringify(typeRow('emp')));
+      await click('[data-act="edit-type"][data-id="emp"]');
+      await setv('[data-cfg="emp.personal"]', '-1', 'input');
+      await click('[data-act="save-type"]');
+      ok('negative rejected, still editing', !!$('[data-cfg]') && Number(typeRow('emp')[3]) === 10);
+      await setv('[data-cfg="emp.personal"]', '12', 'input');
+      await click('[data-act="save-type"]'); await wait(200);
+      ok('save-type writes sheet and closes edit', !$('[data-cfg]') && Number(typeRow('emp')[3]) === 12 && Number(typeRow('gov')[3]) === 45, JSON.stringify(typeRow('emp')));
+
       // change own password via modal
       await click('[data-act="pw-open"]');
       await setv('#p_old', HR_CID, 'input'); await setv('#p_new', 'hrpass123', 'input'); await setv('#p_new2', 'hrpass123', 'input');

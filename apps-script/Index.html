@@ -773,15 +773,21 @@ function viewLogin(){
 function viewSettings(){
   const c = S.config;
   const cols = [["sick","ลาป่วย"],["personal","ลากิจส่วนตัว"],["vacation","ลาพักผ่อน/ปี"],["carryCap","ลาพักผ่อนสะสมรวมไม่เกิน"]];
-  const rows = Object.entries(c.types).map(([k,t])=>`<tr><td><b>${esc(t.label)}</b></td>${cols.map(([f])=>`<td><input type="number" min="0" step="1" style="width:84px" data-cfg="${esc(k)}.${f}" value="${esc(t[f])}" aria-label="${esc(t.label)} ${f}"></td>`).join("")}</tr>`).join("");
+  captureTypeForm();
+  const ed = S.editType && c.types[S.editType] ? S.editType : null;
+  const rows = Object.entries(c.types).map(([k,t])=> k===ed
+    ? `<tr class="editing"><td><b>${esc(t.label)}</b></td>${cols.map(([f],i)=>`<td><input type="number" min="0" step="1" style="width:84px" id="tcfg_${i}" data-cfg="${esc(k)}.${f}" value="${esc(S.typeDraft?.[f] ?? t[f])}" aria-label="${esc(t.label)} ${f}"></td>`).join("")}
+       <td style="white-space:nowrap"><button class="small primary" data-act="save-type" data-id="${esc(k)}">บันทึก</button> <button class="small ghost" data-act="cancel-type">ยกเลิก</button></td></tr>`
+    : `<tr><td><b>${esc(t.label)}</b></td>${cols.map(([f])=>`<td>${esc(t[f] ?? 0)}</td>`).join("")}
+       <td><button class="small" data-act="edit-type" data-id="${esc(k)}" ${ed?"disabled":""}>แก้ไข</button></td></tr>`).join("");
   const [fs, fe] = fyRange(S.fy);
   const hol = (c.holidays||[]).slice().sort((a,b)=>a.d.localeCompare(b.d));
   const holFy = hol.filter(h=>h.d>=fs && h.d<=fe);
   return `<div><h2>ตั้งค่าสิทธิ์การลาและวันหยุด</h2><span class="muted">หน่วยเป็นวันทำการต่อปีงบประมาณ ค่าเริ่มต้นอ้างอิงระเบียบการลาของข้าราชการ พ.ศ. 2555 และประกาศ คพร. โปรดตรวจสอบกับระเบียบที่หน่วยงานใช้จริงก่อนใช้งาน</span></div>
-  <div class="tbl-wrap"><table><thead><tr><th>ประเภทบุคลากร</th>${cols.map(([,l])=>`<th>${l}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="tbl-wrap"><table><thead><tr><th>ประเภทบุคลากร</th>${cols.map(([,l])=>`<th>${l}</th>`).join("")}<th></th></tr></thead><tbody>${rows}</tbody></table></div>
   <div class="panel row"><label class="field" style="flex:0 0 220px"><span>ปีงบประมาณที่เริ่มใช้ระบบ</span><input type="number" id="cfg_start" value="${esc(c.startFY)}"></label>
     <span class="muted" style="flex:1 1 260px;font-size:.88rem">ปีนี้ระบบจะไม่คำนวณยอดสะสมจากปีก่อน ให้กรอกยอดลาพักผ่อนสะสมยกมาของแต่ละคนในหน้าบุคคล</span>
-    <button class="primary" data-act="save-cfg">บันทึกการตั้งค่า</button></div>
+    <button class="primary" data-act="save-cfg">บันทึกปีงบประมาณ</button></div>
   <ul class="legal">
     <li>ข้าราชการ: ลาป่วยได้รับเงินเดือนไม่เกิน 60 วันทำการ, ลากิจส่วนตัว 45 วันทำการ, ลาพักผ่อน 10 วันทำการ สะสมรวมไม่เกิน 20 วันทำการ</li>
     <li>ระบบไม่เก็บวันเริ่มปฏิบัติงาน จึงไม่คำนวณกรณีพิเศษให้อัตโนมัติ ได้แก่ ลากิจปีแรก 15 วัน, สะสมลาพักผ่อนได้ 30 วันเมื่อรับราชการครบ 10 ปี และไม่มีสิทธิลาพักผ่อนเมื่อทำงานไม่ถึง 6 เดือน — กรณีสะสม 30 วัน ให้กรอกยอดยกมาเองในหน้ารายบุคคล</li>
@@ -852,7 +858,7 @@ document.addEventListener("click", async ev => {
   if(a==="reset-close"){ S.resetFor=null; render(); return; }
   if(a==="preview"){ S.previewAs=id; render(); window.scrollTo(0,0); return; }
   if(a==="preview-close"){ S.previewAs=null; render(); return; }
-  if(a==="tab"){ S.view=t.dataset.v; S.confirmKey=null; S.previewAs=null; if(S.view!=="staff") S.editStaff=null; render(); window.scrollTo(0,0); }
+  if(a==="tab"){ S.view=t.dataset.v; S.confirmKey=null; S.previewAs=null; S.editType=null; S.typeDraft=null;if(S.view!=="staff") S.editStaff=null; render(); window.scrollTo(0,0); }
   else if(a==="person"){ S.personId=id; S.view="person"; S.confirmKey=null; render(); window.scrollTo(0,0); }
   else if(a==="record-for"){ S.draft={staffId:id, kind:"sick", start:todayIso(), end:todayIso(), half:"full", emergency:false, note:"", docNo:"", daysOverride:""}; S.view="record"; render(); }
   else if(a==="reset-draft"){ S.draft=null; render(); }
@@ -875,11 +881,21 @@ document.addEventListener("click", async ev => {
   else if(a==="cancel-staff"){ S.editStaff=null; render(); }
   else if(a==="del-staff"){ const nm=S.staff.get(id)?.name||""; S.delStaff=null; if(S.editStaff?.id===id) S.editStaff=null; if(S.personId===id && S.view==="person") S.view="summary"; render();
     try{ await call("deleteStaff", id); toast(`ลบ ${nm} แล้ว`); }catch(e){} }
+  else if(a==="edit-type"){ S.editType=id; S.typeDraft={...S.config.types[id]}; render(); document.getElementById("tcfg_0")?.focus(); }
+  else if(a==="cancel-type"){ S.editType=null; S.typeDraft=null; render(); }
+  else if(a==="save-type"){
+    captureTypeForm();
+    const types = JSON.parse(JSON.stringify(S.config.types)), d = S.typeDraft||{};
+    for(const f of ["sick","personal","vacation","carryCap"]){
+      const v = String(d[f] ?? "").trim(), n = Number(v);
+      if(v==="" || !Number.isFinite(n) || n<0){ toast("กรุณากรอกจำนวนวันเป็นตัวเลขตั้งแต่ 0 ขึ้นไป"); document.querySelector(`[data-cfg="${id}.${f}"]`)?.focus(); return; }
+      types[id][f] = n;
+    }
+    try{ await call("saveTypes", types, S.config.startFY); S.editType=null; S.typeDraft=null; render(); toast(`บันทึกสิทธิ์การลา ${types[id].label} แล้ว`); }catch(e){}
+  }
   else if(a==="save-cfg"){
-    const cfg = JSON.parse(JSON.stringify(S.config));
-    document.querySelectorAll("[data-cfg]").forEach(inp=>{ const [k,f]=inp.dataset.cfg.split("."); cfg.types[k][f]=Number(inp.value)||0; });
-    cfg.startFY = Number(document.getElementById("cfg_start").value)||cfg.startFY;
-    try{ await call("saveTypes", cfg.types, cfg.startFY); toast("บันทึกการตั้งค่าแล้ว"); }catch(e){}
+    const startFY = Number(document.getElementById("cfg_start").value)||S.config.startFY;
+    try{ await call("saveTypes", S.config.types, startFY); toast("บันทึกปีงบประมาณแล้ว"); }catch(e){}
   }
   else if(a==="del-hol"){ try{ await call("deleteHoliday", t.dataset.d); toast("ลบวันหยุดแล้ว"); }catch(e){} }
   else if(a==="csv"){ exportCsv(); }
@@ -909,6 +925,10 @@ function refreshCalc(){
   for(const id of ["f_half_lbl","f_days_lbl"]){ const a=document.getElementById(id), b=c.getElementById(id); if(a&&b) a.textContent=b.textContent; }
   const dy=document.getElementById("f_days"), ndy=c.getElementById("f_days"); if(dy&&ndy) dy.placeholder=ndy.placeholder;
   const hf=document.getElementById("f_half"), nhf=c.getElementById("f_half"); if(hf&&nhf){ hf.disabled=nhf.disabled; hf.value=S.draft.half; }
+}
+function captureTypeForm(){
+  if(!S.editType || !S.typeDraft) return;
+  document.querySelectorAll("[data-cfg]").forEach(inp=>{ const [k,f]=inp.dataset.cfg.split("."); if(k===S.editType) S.typeDraft[f]=inp.value; });
 }
 function captureStaffForm(){
   const e=S.editStaff; if(!e) return; const g=id=>document.getElementById(id);
