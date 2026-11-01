@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ระบบวันลาบุคลากร</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600&family=Sarabun:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: deep-teal header band carrying the fiscal-year switch and pill tabs; light content canvas with soft cards; leave types coded coral / marigold / sky */
+:root{
+  --bg:#f3f7f6; --surface:#ffffff; --surface-2:#edf3f2; --line:#dbe5e3;
+  --ink:#0f2a2e; --muted:#5a6f72;
+  --band:#0b3a3f; --band-2:#11545a; --band-ink:#eafaf6; --band-muted:#a9cfc9;
+  --accent:#0f9c7d; --accent-strong:#0a7a61; --accent-ink:#ffffff; --accent-soft:#d3f2e8;
+  --sick:#d9466c; --sick-soft:#fde3ea; --vac:#1f84c9; --vac-soft:#dcedfb; --per:#b77300; --per-bar:#eea21b; --per-soft:#fdefd3;
+  --danger:#c62a1d; --danger-soft:#fde4e1; --ok:#1d7a3e;
+  --shadow:0 1px 2px rgba(15,42,46,.05),0 6px 20px rgba(15,42,46,.06);
+  --shadow-lg:0 2px 4px rgba(15,42,46,.06),0 14px 34px rgba(15,42,46,.10);
+  --f-display:"Kanit","Sarabun","Leelawadee UI","Tahoma",sans-serif;
+  --f-body:"Sarabun","TH Sarabun New","Leelawadee UI","Tahoma",sans-serif;
+  --r:16px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0b1416; --surface:#122024; --surface-2:#18292d; --line:#24383c; --ink:#e5f2ef; --muted:#93aba7;
+  --band:#08262a; --band-2:#0d3a3f; --band-ink:#e5f7f2; --band-muted:#8fbab3;
+  --accent:#36d0a6; --accent-strong:#5ee0bb; --accent-ink:#06241d; --accent-soft:#163b33;
+  --sick:#ff8aa6; --sick-soft:#3b1d27; --vac:#6db9f2; --vac-soft:#16304a; --per:#f4c35c; --per-bar:#f4c35c; --per-soft:#3a2e15;
+  --danger:#ff8b7d; --danger-soft:#3e1f1b; --ok:#6fd28f;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25); --shadow-lg:0 2px 4px rgba(0,0,0,.3),0 14px 34px rgba(0,0,0,.35);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b1416; --surface:#122024; --surface-2:#18292d; --line:#24383c; --ink:#e5f2ef; --muted:#93aba7;
+  --band:#08262a; --band-2:#0d3a3f; --band-ink:#e5f7f2; --band-muted:#8fbab3;
+  --accent:#36d0a6; --accent-strong:#5ee0bb; --accent-ink:#06241d; --accent-soft:#163b33;
+  --sick:#ff8aa6; --sick-soft:#3b1d27; --vac:#6db9f2; --vac-soft:#16304a; --per:#f4c35c; --per-bar:#f4c35c; --per-soft:#3a2e15;
+  --danger:#ff8b7d; --danger-soft:#3e1f1b; --ok:#6fd28f;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25); --shadow-lg:0 2px 4px rgba(0,0,0,.3),0 14px 34px rgba(0,0,0,.35);
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16.5px;line-height:1.6}
+h1,h2,h3{font-weight:500}
+.brand h1{font-weight:600}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--band)}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* header band */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;color:var(--band-ink);
+  background:radial-gradient(circle at 1px 1px,rgba(255,255,255,.07) 1px,transparent 0) 0 0/18px 18px,linear-gradient(120deg,var(--band),var(--band-2));
+  box-shadow:0 6px 24px rgba(8,38,42,.18)}
+header.top .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;padding-block:14px 10px}
+.logo{width:42px;height:42px;border-radius:12px;flex:0 0 auto;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),#7be3c4);box-shadow:0 4px 14px rgba(15,156,125,.4)}
+.logo svg{width:24px;height:24px}
+.brand{display:flex;flex-direction:column;min-width:0;flex:1 1 200px}
+.brand h1{font-family:var(--f-display);font-size:1.35rem;margin:0;line-height:1.2;letter-spacing:.005em;text-wrap:balance}
+.brand small{color:var(--band-muted);font-size:.82rem}
+.fy{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:4px 4px 4px 12px}
+.fy label{font-size:.78rem;color:var(--band-muted);letter-spacing:.03em}
+.fy select{background:rgba(255,255,255,.95);color:#0f2a2e;border:0;font-weight:600;border-radius:9px;padding:6px 10px}
+nav.tabs{display:flex;gap:6px;overflow-x:auto;padding-block:4px 12px;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{flex:0 0 auto;background:transparent;border:1px solid transparent;color:var(--band-muted);border-radius:999px;padding:7px 16px;font-weight:500;transition:background .15s,color .15s}
+nav.tabs button:hover{color:var(--band-ink);background:rgba(255,255,255,.08);border-color:transparent}
+nav.tabs button[aria-current="page"]{background:var(--band-ink);color:var(--band);font-weight:600;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+
+/* controls */
+select,input,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-width:0;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 16px;transition:transform .12s,box-shadow .15s,border-color .15s,background .15s}
+button:hover{border-color:var(--accent)}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.primary{background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:var(--accent-ink);border-color:transparent;font-weight:600;box-shadow:0 4px 14px rgba(15,156,125,.28)}
+button.primary:hover{box-shadow:0 6px 18px rgba(15,156,125,.38);border-color:transparent}
+button.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+button.ghost:hover{color:var(--ink);background:var(--surface-2);border-color:transparent}
+button.danger{color:var(--danger);border-color:var(--danger-soft);background:var(--danger-soft)}
+button.small{padding:5px 12px;font-size:.85rem;border-radius:8px}
+
+/* page */
+main{padding-block:24px 56px;display:flex;flex-direction:column;gap:20px}
+h2{font-family:var(--f-display);font-size:1.35rem;margin:0;text-wrap:balance;letter-spacing:.005em}
+h3{font-family:var(--f-display);font-size:1.05rem;margin:0}
+.muted{color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.spacer{flex:1}
+.grid-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>span{font-size:.82rem;color:var(--muted);font-weight:500;letter-spacing:.01em}
+.field.wide{grid-column:1/-1}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.stat{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px}
+.stat::after{content:"";position:absolute;right:-26px;top:-26px;width:90px;height:90px;border-radius:50%;background:var(--c-soft);opacity:.9}
+.stat .lbl{font-size:.82rem;color:var(--muted);display:flex;align-items:center;gap:8px;position:relative;z-index:1}
+.stat .lbl i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.stat .val{font-family:var(--f-display);font-size:1.9rem;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums;position:relative;z-index:1}
+.stat .val small{font-family:var(--f-body);font-size:.85rem;font-weight:400;color:var(--muted);margin-left:4px}
+.stat.sick{--c:var(--sick);--c-soft:var(--sick-soft)} .stat.per{--c:var(--per-bar);--c-soft:var(--per-soft)}
+.stat.vac{--c:var(--vac);--c-soft:var(--vac-soft)} .stat.all{--c:var(--accent);--c-soft:var(--accent-soft)}
+
+/* tables */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+th{font-size:.76rem;color:var(--muted);font-weight:600;letter-spacing:.04em;background:var(--surface-2)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{transition:background .12s}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--surface-2)}
+td.num,th.num{text-align:right}
+.name-cell{display:flex;align-items:center;gap:12px;line-height:1.3}
+.name-cell .av{width:38px;height:38px;border-radius:12px;flex:0 0 auto;display:grid;place-items:center;font-family:var(--f-display);font-weight:600;font-size:.95rem;background:var(--accent-soft);color:var(--accent-strong)}
+.name-cell .nm{display:flex;flex-direction:column;min-width:0}
+.name-cell small{color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 11px;font-size:.8rem;font-weight:600;white-space:nowrap}
+.k-sick{background:var(--sick-soft);color:var(--sick)}
+.k-vac{background:var(--vac-soft);color:var(--vac)}
+.k-per{background:var(--per-soft);color:var(--per)}
+.pill.neutral{background:var(--surface-2);color:var(--muted);font-weight:500}
+.pill.warn{background:var(--danger-soft);color:var(--danger)}
+.usage{display:flex;flex-direction:column;gap:4px;min-width:120px}
+.usage .bar{height:7px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.usage .bar i{display:block;height:100%;border-radius:4px}
+.usage .t{font-size:.86rem;font-weight:500}
+.usage .cum{font-size:.74rem;color:var(--muted)}
+.brk{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:.86rem;border-top:1px dashed var(--line);padding-top:10px;font-variant-numeric:tabular-nums}
+.brk dt{color:var(--muted)}
+.brk dd{margin:0;text-align:right;font-weight:500}
+.brk .sum{color:var(--ink);font-weight:600}
+.brk .sec{grid-column:1/-1;font-size:.74rem;letter-spacing:.04em;color:var(--muted);font-weight:600;margin-top:4px}
+.carry-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.usage.over .t{color:var(--danger);font-weight:700}
+
+/* balance cards */
+.balances{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.bal{border:1px solid var(--line);border-radius:var(--r);padding:18px;background:var(--surface);display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.bal::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--c)}
+.bal.sick{--c:var(--sick);--c-soft:var(--sick-soft)} .bal.per{--c:var(--per-bar);--c-soft:var(--per-soft)} .bal.vac{--c:var(--vac);--c-soft:var(--vac-soft)}
+.bal .head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.bal .body{display:flex;align-items:center;gap:18px}
+.ring{--p:0;width:92px;height:92px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(var(--c) calc(var(--p)*1%),var(--c-soft) 0)}
+.ring span{width:70px;height:70px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums;text-align:center;line-height:1.15}
+.ring b{display:block;font-family:var(--f-display);font-size:1.05rem;color:var(--ink)}
+.bal .big{font-family:var(--f-display);font-size:2.3rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.bal .big small{display:block;font-size:.85rem;font-weight:400;color:var(--muted);font-family:var(--f-body);margin-top:6px}
+.bal .bar{display:none}
+.bal .meta{font-size:.84rem;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);border-radius:999px;padding:7px 16px;background:var(--surface);cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-weight:500;transition:all .15s}
+.chip::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--line)}
+.chip.sick::before{background:var(--sick)} .chip.per::before{background:var(--per-bar)} .chip.vac::before{background:var(--vac)} .chip.plain::before{background:var(--accent)}
+.chip:hover{border-color:var(--muted)}
+.chip input{position:absolute;opacity:0;pointer-events:none}
+.chip:has(input:checked).sick{background:var(--sick-soft);border-color:var(--sick);color:var(--sick)}
+.chip:has(input:checked).vac{background:var(--vac-soft);border-color:var(--vac);color:var(--vac)}
+.chip:has(input:checked).per{background:var(--per-soft);border-color:var(--per-bar);color:var(--per)}
+.chip:has(input:checked).plain{background:var(--accent-soft);border-color:var(--accent)}
+.chip:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.notice{border-radius:12px;padding:12px 16px;background:var(--surface-2);font-size:.9rem}
+.notice.warn{background:var(--danger-soft);color:var(--danger)}
+.notice.ok{background:var(--accent-soft)}
+.calc{display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline;padding:14px 18px;border-radius:12px;background:linear-gradient(120deg,var(--accent-soft),var(--surface-2))}
+.calc b{font-family:var(--f-display);font-size:1.6rem;font-variant-numeric:tabular-nums}
+.search-results{border:1px solid var(--line);border-radius:12px;max-height:240px;overflow:auto;background:var(--surface);box-shadow:var(--shadow-lg);margin-top:6px}
+.search-results button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent}
+.search-results button:hover{background:var(--surface-2)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--band);color:var(--band-ink);padding:12px 20px;border-radius:14px;z-index:20;font-size:.92rem;max-width:calc(100% - 32px);box-shadow:var(--shadow-lg);border-left:4px solid var(--accent)}
+.empty{text-align:center;padding:44px 20px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:8px}
+.empty::before{content:"";width:56px;height:56px;border-radius:16px;margin-bottom:6px;
+  background:linear-gradient(135deg,var(--accent-soft),var(--vac-soft))}
+.empty h3{color:var(--ink)}
+.empty p{max-width:52ch;margin:0}
+.legal{font-size:.84rem;color:var(--muted);background:var(--surface-2);border-radius:12px;padding:12px 16px 12px 32px;margin:0}
+.legal li{margin-bottom:2px}
+.person-head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow)}
+.person-head h2{font-size:1.5rem}
+.confirm{display:inline-flex;gap:6px;align-items:center}
+.ico{width:16px;height:16px;flex:0 0 auto}
+.userbox{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.userbox .who{display:flex;flex-direction:column;line-height:1.2;text-align:right;margin-right:4px}
+.userbox .who small{color:var(--band-muted);font-size:.78rem}
+.userbox .hb{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:var(--band-ink);padding:6px 12px;font-size:.85rem;border-radius:999px}
+.userbox .hb:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3)}
+.login-wrap{display:grid;place-items:center;padding-block:40px}
+.login{width:100%;max-width:440px;display:flex;flex-direction:column;gap:16px;padding:28px}
+.login-head{display:flex;align-items:center;gap:14px}
+.login-head h2{font-size:1.5rem}
+.pw{position:relative;display:flex}
+.pw input{flex:1;padding-right:70px}
+.pw button{position:absolute;right:4px;top:50%;transform:translateY(-50%)}
+body.busy{cursor:progress}
+body.busy main button.primary{opacity:.7;pointer-events:none}
+.steps ol{margin:8px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+.steps li{line-height:1.55}
+.pager{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:.92rem}
+.pager .ps{display:flex;align-items:center;gap:8px;color:var(--muted)}
+.pager .ps select{padding:5px 8px;font-weight:600;color:var(--ink)}
+.pg{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.pg button{min-width:36px;padding:5px 8px}
+.pg button.cur{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+td.no,th.no{width:44px;color:var(--muted);text-align:center}
+.tdp{position:relative;display:flex;min-width:0}
+.tdp input[type=text]{flex:1;min-width:0;padding-right:44px;font-variant-numeric:tabular-nums}
+.tdp .tdp-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--accent-strong);padding:6px 8px;border-radius:8px;display:grid;place-items:center}
+.tdp .tdp-btn:hover{background:var(--accent-soft)}
+.tdp .tdp-btn .ico{width:18px;height:18px}
+.cal{position:absolute;top:calc(100% + 6px);left:0;z-index:40;width:300px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:12px}
+.cal .cal-head{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.cal .cal-head select{padding:5px 6px;font-size:.88rem;flex:1;min-width:0}
+.cal .cal-head button{padding:4px 10px;border-radius:8px}
+.cal .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;font-variant-numeric:tabular-nums}
+.cal .dow{font-size:.72rem;color:var(--muted);padding:4px 0}
+.cal .grid button{padding:6px 0;border:0;border-radius:8px;background:transparent;font-size:.88rem}
+.cal .grid button:hover{background:var(--surface-2)}
+.cal .grid button.we{color:var(--sick)}
+.cal .grid button.hol{color:var(--sick);background:var(--sick-soft)}
+.cal .grid button.today{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.cal .grid button.sel{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.cal .cal-foot{display:flex;justify-content:space-between;margin-top:8px;font-size:.78rem;color:var(--muted);align-items:center}
+button.icon-btn{display:inline-flex;align-items:center;gap:6px}
+.acts{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end}
+.acts button{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;font-size:.85rem;border-radius:8px}
+.acts .edit{color:var(--vac);border-color:var(--vac-soft);background:var(--vac-soft)}
+.acts .del{color:var(--danger);border-color:var(--danger-soft);background:var(--danger-soft)}
+.acts .view{color:var(--accent-strong);border-color:var(--accent-soft);background:var(--accent-soft)}
+.acts button:hover{filter:brightness(.97);border-color:currentColor}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;box-shadow:var(--shadow)}
+.toolbar input[type=search]{flex:1 1 220px}
+.overlay{position:fixed;inset:0;z-index:30;background:rgba(6,24,27,.55);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;
+  padding:calc(32px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(32px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.modal{width:100%;max-width:760px;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-lg)}
+.modal .m-head{border-radius:20px 20px 0 0}.modal .m-foot{border-radius:0 0 20px 20px}
+.modal.sm{max-width:460px}
+.modal .m-head{display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line);background:linear-gradient(120deg,var(--accent-soft),var(--surface))}
+.modal .m-head .badge{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink)}
+.modal .m-head.danger{background:linear-gradient(120deg,var(--danger-soft),var(--surface))}
+.modal .m-head.danger .badge{background:var(--danger);color:#fff}
+.modal .m-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+.modal .m-foot{display:flex;gap:10px;justify-content:flex-end;padding:14px 22px;border-top:1px solid var(--line);background:var(--surface-2)}
+button.del-strong{background:var(--danger);color:#fff;border-color:var(--danger);font-weight:600}
+@media (max-width:560px){header.top{position:static}th,td{padding:10px}.bal .big{font-size:2rem}.ring{width:80px;height:80px}.ring span{width:60px;height:60px}.brand h1{font-size:1.15rem}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+<style>html,body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#06352d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="m8.5 15 2.5 2.5 4.5-5"/></svg></div>
+    <div class="brand">
+      <h1>ระบบวันลาบุคลากร</h1>
+      <small id="roleLine">กำลังโหลด…</small>
+    </div>
+    <div class="fy" id="fyWrap" hidden>
+      <label for="fySel">ปีงบประมาณ</label>
+      <select id="fySel"></select>
+    </div>
+    <div class="userbox" id="userbox" hidden></div>
+  </div>
+  <div class="wrap"><nav class="tabs" id="tabs" hidden></nav></div>
+</header>
+<div class="wrap"><main id="app">
+  <div class="panel empty"><h3>ระบบวันลาบุคลากร</h3><p>กำลังเปิดระบบ</p></div>
+</main></div>
+<div id="modal"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="config.js"></script>
+<script>
+(() => {
+"use strict";
+// ---------- constants & helpers ----------
+const KINDS = {
+  sick: {label:"ลาป่วย", cls:"k-sick", color:"var(--sick)"},
+  personal: {label:"ลากิจส่วนตัว", cls:"k-per", color:"var(--per-bar)"},
+  vacation: {label:"ลาพักผ่อน", cls:"k-vac", color:"var(--vac)"},
+};
+const DEFAULT_CONFIG = {
+  startFY: 2570,
+  types: {
+    gov:  {label:"ข้าราชการ", sick:60, personal:45, personalFirstYear:15, vacation:10, carryCap:20, carryCapLong:30, longYears:10},
+    emp:  {label:"พนักงานราชการ", sick:30, personal:10, personalFirstYear:10, vacation:10, carryCap:15, carryCapLong:15, longYears:0},
+    moph: {label:"พนักงานกระทรวงสาธารณสุข", sick:30, personal:10, personalFirstYear:10, vacation:10, carryCap:15, carryCapLong:15, longYears:0},
+    temp: {label:"ลูกจ้างชั่วคราว", sick:30, personal:10, personalFirstYear:10, vacation:10, carryCap:15, carryCapLong:15, longYears:0},
+  },
+  holidays: [
+    {d:"2026-12-07", n:"ชดเชยวันคล้ายวันพระบรมราชสมภพ ร.9 / วันพ่อแห่งชาติ"},
+    {d:"2026-12-10", n:"วันรัฐธรรมนูญ"},
+    {d:"2026-12-31", n:"วันสิ้นปี"},
+    {d:"2027-01-01", n:"วันขึ้นปีใหม่"},
+    {d:"2027-04-06", n:"วันจักรี"},
+    {d:"2027-04-13", n:"วันสงกรานต์"},
+    {d:"2027-04-14", n:"วันสงกรานต์"},
+    {d:"2027-04-15", n:"วันสงกรานต์"},
+    {d:"2027-05-04", n:"วันฉัตรมงคล"},
+    {d:"2027-06-03", n:"วันเฉลิมพระชนมพรรษาสมเด็จพระราชินี"},
+    {d:"2027-07-28", n:"วันเฉลิมพระชนมพรรษา ร.10"},
+    {d:"2027-08-12", n:"วันแม่แห่งชาติ"},
+  ],
+};
+const TH_MONTHS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const parseD = iso => { const [y,m,d] = iso.split("-").map(Number); return new Date(Date.UTC(y,m-1,d)); };
+const isoOf = dt => dt.toISOString().slice(0,10);
+const thDate = iso => { if(!iso) return "–"; const [y,m,d]=iso.split("-").map(Number); return `${d} ${TH_MONTHS[m-1]} ${y+543}`; };
+const fyOf = iso => { const [y,m] = iso.split("-").map(Number); return (m >= 10 ? y+1 : y) + 543; };
+const fyRange = fy => [`${fy-544}-10-01`, `${fy-543}-09-30`];
+const todayIso = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; };
+const fmtN = n => (Math.round(n*10)/10).toLocaleString("th-TH", {maximumFractionDigits:1});
+const initial = n => { const t=String(n||"").replace(/^(นางสาว|นาย|นาง|น\.ส\.|ดร\.|ว่าที่ ?ร\.?ต\.?)\s*/,"").trim(); const m=t.match(/[ก-ฮA-Za-z]/); return m?m[0]:"•"; };
+const ORG = [
+  {g:"กลุ่มงานยุทธศาสตร์และสารสนเทศ+สุขภาพดิจิทัล", s:["งานยุทธศาสตร์และสารสนเทศ","งานสุขภาพดิจิทัล"]},
+  {g:"กลุ่มงานบริหารทรัพยากรบุคคล", s:[]},
+  {g:"กลุ่มงานพัฒนาระบบบริการสุขภาพ", s:["งานพัฒนาระบบบริการสุขภาพ","งานสารนิเทศ"]},
+  {g:"กลุ่มงานการเงินและการคลัง", s:[]},
+  {g:"กลุ่มงานอำนวยการ", s:["งานบริหารและระบบสารบรรณ","งานการเงินและบัญชี","งานกฎหมายและเสริมสร้างวินัยข้าราชการ","งานพัสดุ"]},
+];
+const sectionsOf = g => (ORG.find(o=>o.g===g)||{s:[]}).s;
+const groupOptions = sel => { const names=ORG.map(o=>o.g); const extra = sel && !names.includes(sel) ? [sel] : [];
+  return [...names, ...extra].map(g=>`<option value="${esc(g)}" ${sel===g?"selected":""}>${esc(g)}${extra.includes(g)?" (ข้อมูลเดิม)":""}</option>`).join(""); };
+const LEVELS = [
+  ["ประเภทวิชาการ",["ปฏิบัติการ","ชำนาญการ","ชำนาญการพิเศษ","เชี่ยวชาญ","ทรงคุณวุฒิ"]],
+  ["ประเภททั่วไป",["ปฏิบัติงาน","ชำนาญงาน","อาวุโส","ทักษะพิเศษ"]],
+  ["ประเภทอำนวยการ",["อำนวยการต้น","อำนวยการสูง"]],
+  ["ประเภทบริหาร",["บริหารต้น","บริหารสูง"]],
+];
+const levelOptions = sel => { const all = LEVELS.flatMap(x=>x[1]);
+  return LEVELS.map(([g,ls])=>`<optgroup label="${g}">${ls.map(l=>`<option value="${l}" ${sel===l?"selected":""}>${l}</option>`).join("")}</optgroup>`).join("")
+    + (sel && !all.includes(sel) ? `<option value="${esc(sel)}" selected>${esc(sel)}</option>` : ""); };
+const posLine = p => [p.position, p.level ? "ระดับ"+p.level : ""].filter(Boolean).join(" ");
+const TH_MONTHS_FULL = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+const CAL_ICON = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>';
+const isoToBE = iso => { if(!iso) return ""; const [y,m,d]=iso.split("-"); return `${d}/${m}/${Number(y)+543}`; };
+const beToIso = txt => { const m = String(txt||"").trim().match(/^(\d{1,2})[\/\-\. ](\d{1,2})[\/\-\. ](\d{2,4})$/); if(!m) return null;
+  let d=+m[1], mo=+m[2], y=+m[3]; if(y<100) y+=2500; if(y>2400) y-=543; if(y<1900||y>2200||mo<1||mo>12||d<1) return null;
+  const dt=new Date(Date.UTC(y,mo-1,d)); if(dt.getUTCDate()!==d) return null; return isoOf(dt); };
+function dateField(id, iso, opts={}){
+  const open = S.tdp && S.tdp.id===id;
+  let cal = "";
+  if(open){
+    const y=S.tdp.y, m=S.tdp.m; const first=new Date(Date.UTC(y,m,1)).getUTCDay(); const n=new Date(Date.UTC(y,m+1,0)).getUTCDate();
+    const hs=holidaySet(); const today=todayIso(); let cells="";
+    for(let i=0;i<first;i++) cells+="<span></span>";
+    for(let d=1; d<=n; d++){ const di=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; const wd=(first+d-1)%7;
+      const cls=[wd===0||wd===6?"we":"", hs.has(di)?"hol":"", di===today?"today":"", di===iso?"sel":""].join(" ");
+      cells+=`<button type="button" class="${cls}" data-act="tdp-pick" data-id="${id}" data-iso="${di}" ${hs.has(di)?`title="วันหยุด"`:""}>${d}</button>`; }
+    const yNow=new Date().getFullYear(); const ys=[]; for(let yy=yNow+3; yy>=yNow-45; yy--) ys.push(yy); if(!ys.includes(y)) ys.push(y);
+    cal = `<div class="cal" role="dialog" aria-label="เลือกวันที่"><div class="cal-head">
+      <button type="button" data-act="tdp-nav" data-d="-1" aria-label="เดือนก่อน">‹</button>
+      <select id="tdp_m" aria-label="เดือน">${TH_MONTHS_FULL.map((mn,i)=>`<option value="${i}" ${i===m?"selected":""}>${mn}</option>`).join("")}</select>
+      <select id="tdp_y" aria-label="ปี พ.ศ.">${ys.map(yy=>`<option value="${yy}" ${yy===y?"selected":""}>${yy+543}</option>`).join("")}</select>
+      <button type="button" data-act="tdp-nav" data-d="1" aria-label="เดือนถัดไป">›</button></div>
+      <div class="grid">${["อา","จ","อ","พ","พฤ","ศ","ส"].map(x=>`<span class="dow">${x}</span>`).join("")}${cells}</div>
+      <div class="cal-foot"><span>สีแดง = เสาร์-อาทิตย์/วันหยุด</span><button type="button" class="small ghost" data-act="tdp-pick" data-id="${id}" data-iso="${today}">วันนี้</button></div></div>`;
+  }
+  return `<div class="tdp"><input type="text" id="${id}_txt" value="${esc(isoToBE(iso))}" placeholder="วว/ดด/ปปปป (พ.ศ.)" inputmode="numeric" autocomplete="off" ${opts.label?`aria-label="${opts.label}"`:""}>
+    <input type="hidden" id="${id}" value="${esc(iso||"")}"><button type="button" class="tdp-btn" data-act="tdp-open" data-id="${id}" aria-label="เปิดปฏิทิน">${CAL_ICON}</button>${cal}</div>`;
+}
+function setDateValue(id, iso){
+  const h=document.getElementById(id), t=document.getElementById(id+"_txt");
+  if(h) h.value=iso||""; if(t) t.value=isoToBE(iso);
+  if(id==="h_d") S.hd=iso;
+}
+const groupOf = p => (p.group || p.unit || "").trim();
+const orgLine = p => [groupOf(p), (p.section||"").trim()].filter(Boolean).join(" · ");
+const distinct = a => [...new Set(a.map(x=>(x||"").trim()).filter(Boolean))].sort((x,y)=>x.localeCompare(y,"th"));
+const ICON = {
+  plus:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  edit:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>',
+  trash:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  eye:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  user:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+};
+const actBtns = (id, withView) => `<div class="acts">${withView?`<button class="view" data-act="person" data-id="${esc(id)}" title="ดูการลา">${ICON.eye}<span>ดู</span></button>`:""}<button class="edit" data-act="edit-staff" data-id="${esc(id)}" title="แก้ไขข้อมูลบุคลากร">${ICON.edit}<span>แก้ไข</span></button><button class="del" data-act="ask-del-staff" data-id="${esc(id)}" title="ลบบุคลากร">${ICON.trash}<span>ลบ</span></button></div>`;
+const PAGE_SIZES = [10,20,30,40,50,60];
+function paginate(list, key){
+  const size = S.pageSize || 10; const pages = Math.max(1, Math.ceil(list.length/size));
+  const page = Math.min(Math.max(1, (S.page||{})[key]||1), pages);
+  const start = (page-1)*size; const items = list.slice(start, start+size);
+  const nums=[]; for(let i=1;i<=pages;i++){ if(i===1||i===pages||Math.abs(i-page)<=1) nums.push(i); else if(nums[nums.length-1]!=="…") nums.push("…"); }
+  const html = `<div class="pager"><label class="ps">แสดง <select id="pageSize" aria-label="จำนวนรายการต่อหน้า">${PAGE_SIZES.map(n=>`<option value="${n}" ${n===size?"selected":""}>${n}</option>`).join("")}</select> รายการ/หน้า</label>
+    <span class="muted">${list.length ? `${start+1}–${start+items.length} จาก ${list.length} คน` : "ไม่มีรายการ"}</span><span class="spacer"></span>
+    ${pages>1?`<div class="pg"><button class="small" data-act="page" data-k="${key}" data-p="${page-1}" ${page===1?"disabled":""} aria-label="หน้าก่อน">‹</button>${nums.map(n=>n==="…"?`<span class="muted">…</span>`:`<button class="small ${n===page?"cur":""}" data-act="page" data-k="${key}" data-p="${n}" ${n===page?'aria-current="page"':""}>${n}</button>`).join("")}<button class="small" data-act="page" data-k="${key}" data-p="${page+1}" ${page===pages?"disabled":""} aria-label="หน้าถัดไป">›</button></div>`:""}</div>`;
+  return {items, html, start};
+}
+function resetPages(){ S.page = {}; }
+const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+
+// ---------- state ----------
+const S = {
+  db:null, user:null, downloads:null, isHR:false, myId:null, myEmail:null,
+  staff:new Map(), staffLoaded:false, config:DEFAULT_CONFIG, configExists:false,
+  pageSize:(()=>{ try{ const v=Number(localStorage.getItem("leave.pageSize")); return [10,20,30,40,50,60].includes(v)?v:10; }catch(e){ return 10; } })(), page:{},
+  fy: fyOf(todayIso()), view:"summary", filterGroup:"all", personId:null, myDoc:undefined,
+  filterType:"all", q:"", draft:null, editStaff:null, confirmKey:null, profiles:{},
+};
+const $app = document.getElementById("app");
+const $tabs = document.getElementById("tabs");
+const $fy = document.getElementById("fySel");
+let toastT;
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true, 2800); }
+
+// one write at a time per document
+const queues = new Map();
+
+
+// ---------- leave math ----------
+function holidaySet(){ return new Set((S.config.holidays||[]).map(h=>h.d)); }
+function workingDays(start, end, half){
+  if(!start || !end || end < start) return 0;
+  const hs = holidaySet(); let n = 0;
+  for(let d=parseD(start); isoOf(d) <= end; d.setUTCDate(d.getUTCDate()+1)){
+    const wd = d.getUTCDay(); if(wd===0||wd===6) continue; if(hs.has(isoOf(d))) continue; n++;
+  }
+  if(half && half!=="full" && start===end) return n ? 0.5 : 0;
+  return n;
+}
+function typeCfg(p){ return S.config.types[p.ptype] || S.config.types.gov; }
+function serviceYearsAt(){ return 0; }
+function usedIn(p, fy, kind){ return (p.leaves||[]).filter(l=>l.fy===fy && l.kind===kind).reduce((s,l)=>s+Number(l.days||0),0); }
+function vacCap(p, fy){ const c=typeCfg(p); const yrs=serviceYearsAt(p, fyRange(fy)[0]); return (c.longYears>0 && yrs>=c.longYears) ? c.carryCapLong : c.carryCap; }
+function carryIn(p, fy, depth=0){
+  const carry = p.carry||{};
+  if(carry[fy]!=null && carry[fy]!=="") return {v:Number(carry[fy]), manual:true};
+  const keys = Object.keys(carry).map(Number);
+  const base = Math.min(Number(S.config.startFY)||fy, ...(keys.length?keys:[Infinity]));
+  if(fy <= base || depth > 40) return {v:0, manual:false};
+  const c = typeCfg(p);
+  const prev = vacEntitled(p, fy-1, depth+1) - usedIn(p, fy-1, "vacation");
+  return {v:Math.max(0, Math.min(vacCap(p,fy)-c.vacation, prev)), manual:false};
+}
+function vacEntitled(p, fy, depth=0){ return typeCfg(p).vacation + carryIn(p, fy, depth).v; }
+function manualCarry(p, kind, fy){ const v=((p.carryK||{})[kind]||{})[fy]; return (v==null||v==="") ? null : Number(v); }
+function cumUsed(p, fy, kind){ const ls=(p.leaves||[]).filter(l=>l.fy<=fy && l.kind===kind); return {days:ls.reduce((s,l)=>s+Number(l.days||0),0), count:ls.length}; }
+function balances(p, fy){
+  const c = typeCfg(p);
+  const ci = carryIn(p, fy);
+  const mk = (kind, annual, carry, carryManual) => { const used=usedIn(p,fy,kind); const cu=cumUsed(p,fy,kind); const quota=annual+carry;
+    return {annual, carry, carryManual, quota, used, left:quota-used, count:(p.leaves||[]).filter(l=>l.fy===fy && l.kind===kind).length, cum:cu.days, cumCount:cu.count}; };
+  const cs = manualCarry(p,"sick",fy), cp = manualCarry(p,"personal",fy);
+  const out = {
+    sick: mk("sick", c.sick, cs||0, cs!=null),
+    personal: mk("personal", c.personal, cp||0, cp!=null),
+    vacation: mk("vacation", c.vacation, ci.v, ci.manual),
+  };
+  out.personal.emergency = (p.leaves||[]).filter(l=>l.fy===fy && l.kind==="personal" && l.emergency).length;
+  out.vacation.cap = vacCap(p,fy);
+  return out;
+}
+
+// ---------- data access ----------
+function gas(fn, args){
+  return new Promise((res, rej) => {
+    if(!(window.google && google.script && google.script.run)){ rej(new Error("เปิดหน้านี้ผ่านลิงก์เว็บแอปของ Google Apps Script")); return; }
+    google.script.run.withSuccessHandler(res).withFailureHandler(e => rej(e))[fn].apply(null, args);
+  });
+}
+function applyData(d){
+  S.me = d.me; S.isHR = !!d.isHR;
+  S.config = {...DEFAULT_CONFIG, ...d.config, types: Object.keys(d.config.types||{}).length ? d.config.types : DEFAULT_CONFIG.types};
+  const m = new Map();
+  for(const st of d.staff) m.set(st.id, {...st, leaves:[], carry:{}, carryK:{sick:{}, personal:{}}});
+  for(const l of d.leaves){ const p=m.get(l.staffId); if(p) p.leaves.push(l); }
+  for(const c of d.carry){ const p=m.get(c.staffId); if(!p) continue;
+    if(c.vacation!=null) p.carry[c.fy]=c.vacation; if(c.sick!=null) p.carryK.sick[c.fy]=c.sick; if(c.personal!=null) p.carryK.personal[c.fy]=c.personal; }
+  S.staff = m; S.staffLoaded = true;
+  S.myDoc = m.get(d.me.id) || null;
+}
+async function call(fn, ...args){
+  S.busy = true; document.body.classList.add("busy");
+  try{
+    const r = await gas(fn, [S.token, ...args]);
+    if(r && r.data) applyData(r.data);
+    render();
+    return r;
+  }catch(e){
+    const msg = String((e && e.message) || e);
+    if(msg.indexOf("SESSION")>=0){ doLogout(true); toast(msg.replace(/^.*SESSION:\s*/,"")); }
+    else toast(msg.replace(/^Error:\s*/,""));
+    throw e;
+  }finally{ S.busy = false; document.body.classList.remove("busy"); }
+}
+function saveToken(t){ try{ if(t) sessionStorage.setItem("leave.token", t); else sessionStorage.removeItem("leave.token"); }catch(e){} }
+function doLogout(silent){
+  const t=S.token; S.token=null; saveToken(null); S.staff=new Map(); S.myDoc=null; S.me=null; S.isHR=false; S.view="summary"; S.editStaff=null; S.delStaff=null; S.pwModal=null; S.resetFor=null;
+  if(t && !silent) gas("logout",[t]).catch(()=>{});
+  render();
+}
+
+// ---------- rendering ----------
+function fyOptions(){
+  const now = fyOf(todayIso()); const set = new Set([now, now-1, now+1, Number(S.config.startFY)||now]);
+  for(const p of S.staff.values()) for(const l of (p.leaves||[])) set.add(l.fy);
+  if(S.myDoc) for(const l of (S.myDoc.leaves||[])) set.add(l.fy);
+  const list=[...set].filter(Boolean).sort((a,b)=>b-a);
+  $fy.innerHTML = list.map(f=>`<option value="${f}" ${f===S.fy?"selected":""}>${f}</option>`).join("");
+}
+function tabsHtml(){
+  const t = [["summary","สรุปรายบุคคล"],["record","บันทึกการลา"],["staff","รายชื่อบุคลากร"],["accounts","บัญชีผู้ใช้"],["settings","ตั้งค่าสิทธิ์และวันหยุด"]];
+  return t.map(([k,l])=>`<button data-act="tab" data-v="${k}" ${S.view===k||(S.view==="person"&&k==="summary")?'aria-current="page"':""}>${l}</button>`).join("");
+}
+function usageCell(b, kind){
+  const pct = b.quota>0 ? Math.min(100, b.used/b.quota*100) : (b.used>0?100:0);
+  const over = b.used > b.quota;
+  return `<div class="usage ${over?"over":""}"><span class="t">${fmtN(b.used)} / ${fmtN(b.quota)}</span><span class="bar"><i style="width:${pct}%;background:${KINDS[kind].color}"></i></span><span class="cum">สะสมทุกปี ${fmtN(b.cum)} วัน</span></div>`;
+}
+function staffList(){ return [...S.staff.entries()].map(([id,p])=>({...p,_id:id})).sort((a,b)=>(a.name||"").localeCompare(b.name||"","th",{numeric:true})); }
+
+function viewSummary(){
+  if(!S.staffLoaded) return `<div class="panel empty"><h3>กำลังโหลดรายชื่อบุคลากร…</h3></div>`;
+  const all = staffList();
+  if(!all.length) return `<div class="panel empty"><h3>ยังไม่มีบุคลากรในระบบ</h3><p>เริ่มจากเพิ่มรายชื่อบุคลากรและผูกบัญชีผู้ใช้ เพื่อให้แต่ละคนเข้ามาดูการลาของตัวเองได้</p><button class="primary" data-act="tab" data-v="staff">เพิ่มบุคลากรคนแรก</button></div>`;
+  const q = S.q.trim().toLowerCase();
+  const rows = all.filter(p => (S.filterType==="all"||p.ptype===S.filterType) && (S.filterGroup==="all"||groupOf(p)===S.filterGroup) && (!q || `${p.name} ${posLine(p)} ${orgLine(p)}`.toLowerCase().includes(q)));
+  const totals = {sick:0, personal:0, vacation:0, n:0};
+  for(const p of rows){ const b=balances(p,S.fy); totals.sick+=b.sick.used; totals.personal+=b.personal.used; totals.vacation+=b.vacation.used; totals.n+=b.sick.count+b.personal.count+b.vacation.count; }
+  const pg = paginate(rows, "sum");
+  const body = pg.items.map((p,i) => {
+    const b = balances(p, S.fy);
+    const flags = [];
+    if(!p.hasPassword) flags.push(`<span class="pill neutral">ยังไม่มีรหัสผ่าน</span>`);
+    if(b.personal.emergency) flags.push(`<span class="pill k-per">ฉุกเฉิน ${b.personal.emergency} ครั้ง</span>`);
+    return `<tr class="click" data-act="person" data-id="${esc(p._id)}" tabindex="0">
+      <td class="no">${pg.start+i+1}</td><td><div class="name-cell"><span class="av" aria-hidden="true">${esc(initial(p.name))}</span><span class="nm"><b>${esc(p.name)}</b><small>${esc(posLine(p))}${orgLine(p)?" · "+esc(orgLine(p)):""}</small></span></div></td>
+      <td>${esc(typeCfg(p).label)}</td>
+      <td>${usageCell(b.sick,"sick")}</td>
+      <td>${usageCell(b.personal,"personal")}</td>
+      <td>${usageCell(b.vacation,"vacation")}</td>
+      <td class="num">${b.sick.count+b.personal.count+b.vacation.count}</td>
+      <td>${flags.join(" ")}</td><td>${actBtns(p._id, false)}</td></tr>`;
+  }).join("");
+  const groups = [...ORG.map(o=>o.g), ...distinct(all.map(groupOf)).filter(g=>!ORG.some(o=>o.g===g))];
+  const typeOpts = [["all","ทุกประเภท"],...Object.entries(S.config.types).map(([k,v])=>[k,v.label])].map(([k,l])=>`<option value="${esc(k)}" ${S.filterType===k?"selected":""}>${esc(l)}</option>`).join("");
+  return `
+  <div class="row"><div><h2>สรุปการลารายบุคคล ปีงบประมาณ ${S.fy}</h2><span class="muted">${thDate(fyRange(S.fy)[0])} – ${thDate(fyRange(S.fy)[1])} · หน่วยเป็นวันทำการ (ใช้ / สิทธิ์)</span></div>
+  <span class="spacer"></span><button data-act="csv">ส่งออกเป็นชีต</button><button class="primary" data-act="tab" data-v="record">+ บันทึกการลา</button></div>
+  <div class="row">
+    <input id="q" type="search" placeholder="ค้นหาชื่อ ตำแหน่ง กลุ่มงาน งาน" value="${esc(S.q)}" style="flex:1 1 240px">
+    <select id="ftype">${typeOpts}</select>
+    ${groups.length?`<select id="fgroup"><option value="all">ทุกกลุ่มงาน</option>${groups.map(g=>`<option value="${esc(g)}" ${S.filterGroup===g?"selected":""}>${esc(g)}</option>`).join("")}</select>`:""}
+  </div>
+  <div class="stats">
+    <div class="stat all"><span class="lbl"><i></i>บุคลากร</span><span class="val">${rows.length}<small>คน · ${totals.n} ครั้ง</small></span></div>
+    <div class="stat sick"><span class="lbl"><i></i>ลาป่วยรวม</span><span class="val">${fmtN(totals.sick)}<small>วัน</small></span></div>
+    <div class="stat per"><span class="lbl"><i></i>ลากิจส่วนตัวรวม</span><span class="val">${fmtN(totals.personal)}<small>วัน</small></span></div>
+    <div class="stat vac"><span class="lbl"><i></i>ลาพักผ่อนรวม</span><span class="val">${fmtN(totals.vacation)}<small>วัน</small></span></div>
+  </div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th class="no">ที่</th><th>ชื่อ-สกุล</th><th>ประเภท</th><th>ลาป่วย</th><th>ลากิจส่วนตัว</th><th>ลาพักผ่อน</th><th class="num">ครั้ง</th><th></th><th class="num">จัดการ</th></tr></thead>
+    <tbody>${body || `<tr><td colspan="9" class="muted">ไม่พบรายชื่อตามเงื่อนไข</td></tr>`}</tbody>
+  </table></div>
+  ${pg.html}`;
+}
+
+function balanceCards(p, fy){
+  const b = balances(p, fy);
+  const card = (k, extra) => {
+    const x=b[k]; const pct = x.quota>0?Math.min(100,x.used/x.quota*100):(x.used?100:0);
+    const cls = k==="sick"?"sick":k==="vacation"?"vac":"per";
+    return `<div class="bal ${cls}"><div class="head"><span class="pill ${KINDS[k].cls}">${KINDS[k].label}</span><span class="muted" style="font-size:.84rem">${x.count} ครั้ง</span></div>
+      <div class="body"><div class="ring" style="--p:${pct.toFixed(1)}"><span><b>${Math.round(pct)}%</b>ใช้ไป</span></div>
+      <div class="big" style="color:${x.left<0?"var(--danger)":"inherit"}">${fmtN(x.left)}<small>วันคงเหลือ</small></div></div>
+      <dl class="brk"><span class="sec">สิทธิ์การลา</span>
+        <dt>ประจำปี</dt><dd>${fmtN(x.annual)} วัน</dd>
+        <dt>สะสมยกมา${x.carryManual?" (HR กำหนด)":k==="vacation"?" (อัตโนมัติ)":""}</dt><dd>${fmtN(x.carry)} วัน</dd>
+        <dt class="sum">รวมสิทธิ์ปีนี้</dt><dd class="sum">${fmtN(x.quota)} วัน</dd>
+        <span class="sec">วันที่ลาไปแล้ว</span>
+        <dt>ประจำปี (ปีงบ ${fy})</dt><dd>${fmtN(x.used)} วัน · ${x.count} ครั้ง</dd>
+        <dt>สะสมทุกปี (ถึงปีงบ ${fy})</dt><dd>${fmtN(x.cum)} วัน · ${x.cumCount} ครั้ง</dd></dl>${extra||""}</div>`;
+  };
+  const vacExtra = `<div class="meta"><span>ยอดยกมาอัตโนมัติรวมกับปีนี้ได้ไม่เกิน ${b.vacation.cap} วัน</span></div>`;
+  const perExtra = b.personal.emergency?`<div class="meta"><span>ในปีนี้เป็นลากิจฉุกเฉิน ${b.personal.emergency} ครั้ง</span></div>`:"";
+  return `<div class="balances">${card("sick")}${card("personal",perExtra)}${card("vacation",vacExtra)}</div>`;
+}
+function leaveTable(p, fy, editable){
+  const ls = (p.leaves||[]).filter(l=>l.fy===fy).sort((a,b)=>b.start.localeCompare(a.start));
+  if(!ls.length) return `<div class="panel empty"><h3>ไม่มีรายการลาในปีงบประมาณ ${fy}</h3><p>${editable?"กด “บันทึกการลา” เพื่อเพิ่มรายการ":"เมื่อ HR บันทึกการลาของคุณ รายการจะแสดงที่นี่"}</p></div>`;
+  return `<div class="tbl-wrap"><table><thead><tr><th>ประเภท</th><th>ตั้งแต่</th><th>ถึง</th><th class="num">วันทำการ</th><th>หมายเหตุ</th>${editable?"<th></th>":""}</tr></thead><tbody>
+  ${ls.map(l=>{ const K=KINDS[l.kind]||{cls:"neutral",label:esc(l.kind||"?")}; return `<tr><td><span class="pill ${K.cls}">${K.label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}</td>
+    <td>${thDate(l.start)}${l.half&&l.half!=="full"?` <small class="muted">(${l.half==="am"?"ครึ่งเช้า":"ครึ่งบ่าย"})</small>`:""}</td><td>${thDate(l.end)}</td>
+    <td class="num">${fmtN(l.days)}</td><td style="white-space:normal;min-width:160px">${esc(l.note||"")}${l.docNo?`<br><small class="muted">เลขที่ ${esc(l.docNo)}</small>`:""}</td>
+    ${editable?`<td>${S.confirmKey==="del:"+l.id?`<span class="confirm"><button class="small danger" data-act="del-leave" data-id="${esc(l.id)}">ยืนยันลบ</button><button class="small ghost" data-act="cancel">ยกเลิก</button></span>`:`<button class="small ghost" data-act="ask" data-k="del:${esc(l.id)}">ลบ</button>`}</td>`:""}</tr>`; }).join("")}
+  </tbody></table></div>`;
+}
+function viewPerson(){
+  const p = S.staff.get(S.personId);
+  if(!p) return `<div class="panel empty"><h3>ไม่พบบุคลากร</h3><button data-act="tab" data-v="summary">กลับไปหน้าสรุป</button></div>`;
+  const pp = {...p,_id:S.personId}; const b = balances(pp, S.fy);
+  const manual = (p.carry||{})[S.fy];
+  return `<div><button class="ghost small" data-act="tab" data-v="summary">← กลับไปหน้าสรุป</button></div>
+  <div class="person-head"><div><h2>${esc(p.name)}</h2><span class="muted">${esc(posLine(p))}${orgLine(p)?" · "+esc(orgLine(p)):""} · ${esc(typeCfg(p).label)}</span></div>
+  <span class="spacer"></span>${roleStatus(p)}
+  <button class="icon-btn" data-act="edit-staff" data-id="${esc(S.personId)}">${ICON.edit}แก้ไขข้อมูล</button><button class="icon-btn danger" data-act="ask-del-staff" data-id="${esc(S.personId)}">${ICON.trash}ลบ</button><button class="primary" data-act="record-for" data-id="${esc(S.personId)}">+ บันทึกการลา</button></div>
+  ${balanceCards(pp, S.fy)}
+  <div class="panel" style="display:flex;flex-direction:column;gap:12px"><div><h3>วันลาสะสมยกมา ปีงบ ${S.fy}</h3><span class="muted" style="font-size:.86rem">ยอดที่กรอกจะบวกเพิ่มจากสิทธิ์ประจำปี เว้นว่างไว้ = ลาป่วย/ลากิจไม่มียอดยกมา ส่วนลาพักผ่อนคำนวณอัตโนมัติจากปีก่อน</span></div>
+    <div class="carry-grid">
+      <label class="field"><span>ลาป่วย สะสมยกมา (วัน)</span><input id="carry_sick" type="number" min="0" step="0.5" value="${esc(manualCarry(p,"sick",S.fy)??"")}" placeholder="0"></label>
+      <label class="field"><span>ลากิจส่วนตัว สะสมยกมา (วัน)</span><input id="carry_personal" type="number" min="0" step="0.5" value="${esc(manualCarry(p,"personal",S.fy)??"")}" placeholder="0"></label>
+      <label class="field"><span>ลาพักผ่อน สะสมยกมา (วัน)</span><input id="carry_vacation" type="number" min="0" step="0.5" value="${manual!=null?esc(manual):""}" placeholder="อัตโนมัติ ${fmtN(manual!=null?0:b.vacation.carry)}"></label>
+    </div>
+    <div class="row"><span class="spacer"></span><button class="ghost" data-act="clear-carry">ล้างยอดที่กรอกเอง</button><button class="primary" data-act="save-carry">บันทึกยอดสะสมยกมา</button></div></div>
+  
+  <h3>รายการลา ปีงบประมาณ ${S.fy}</h3>
+  ${leaveTable(pp, S.fy, true)}`;
+}
+
+function viewRecord(){
+  const list = staffList();
+  if(!list.length) return `<div class="panel empty"><h3>ต้องมีรายชื่อบุคลากรก่อนบันทึกการลา</h3><button class="primary" data-act="tab" data-v="staff">ไปที่รายชื่อบุคลากร</button></div>`;
+  const d = S.draft || (S.draft = {staffId:"", kind:"sick", start:todayIso(), end:todayIso(), half:"full", emergency:false, note:"", docNo:"", daysOverride:""});
+  const auto = workingDays(d.start, d.end, d.half);
+  const days = d.daysOverride!=="" ? Number(d.daysOverride) : auto;
+  const p = d.staffId ? S.staff.get(d.staffId) : null;
+  let info = "";
+  if(p){
+    const fy = d.start ? fyOf(d.start) : S.fy;
+    const b = balances({...p,_id:d.staffId}, fy)[d.kind];
+    const after = b.left - days;
+    const overlap = (p.leaves||[]).find(l => !(d.end < l.start || d.start > l.end));
+    info = `<div class="calc"><span>ปีงบ ${fy}</span><span>${KINDS[d.kind].label}: คงเหลือ <b>${fmtN(b.left)}</b> วัน</span><span>หลังบันทึก <b style="color:${after<0?"var(--danger)":"inherit"}">${fmtN(after)}</b> วัน</span></div>`
+      + (after<0?`<div class="notice warn">จำนวนวันเกินสิทธิ์ที่ได้รับเงินเดือนตามระเบียบ ตรวจสอบการอนุญาตของผู้บังคับบัญชาก่อนบันทึก</div>`:"")
+      + (overlap?`<div class="notice warn">ช่วงวันที่ซ้อนกับรายการเดิม: ${(KINDS[overlap.kind]||{label:"การลา"}).label} ${thDate(overlap.start)} – ${thDate(overlap.end)}</div>`:"")
+      + (d.start && d.end && fyOf(d.start)!==fyOf(d.end)?`<div class="notice warn">ช่วงลาคร่อมสองปีงบประมาณ ควรแยกบันทึกเป็นสองรายการ</div>`:"");
+  }
+  const opts = list.map(s=>`<option value="${esc(s._id)}" ${d.staffId===s._id?"selected":""}>${esc(s.name)}${posLine(s)?" — "+esc(posLine(s)):""}</option>`).join("");
+  const single = d.start && d.start===d.end;
+  return `<h2>บันทึกการลา</h2>
+  <form class="panel" id="leaveForm" style="display:flex;flex-direction:column;gap:16px">
+    <div class="grid-form">
+      <label class="field wide"><span>บุคลากร</span><select id="f_staff" required><option value="">— เลือกบุคลากร —</option>${opts}</select></label>
+      <div class="field wide"><span>ประเภทการลา</span><div class="chips">
+        ${Object.entries(KINDS).map(([k,v])=>`<label class="chip ${k==="sick"?"sick":k==="vacation"?"vac":"per"}"><input type="radio" name="f_kind" value="${k}" ${d.kind===k?"checked":""}>${v.label}</label>`).join("")}
+        ${d.kind==="personal"?`<label class="chip plain"><input type="checkbox" id="f_emerg" ${d.emergency?"checked":""}>ลากิจฉุกเฉิน (ยื่นใบลาภายหลัง)</label>`:""}
+      </div></div>
+      <label class="field"><span>ตั้งแต่วันที่</span>${dateField("f_start", d.start)}</label>
+      <label class="field"><span>ถึงวันที่</span>${dateField("f_end", d.end)}</label>
+      <label class="field"><span id="f_half_lbl">ช่วงเวลา${single?"":" (ใช้ได้เมื่อลาวันเดียว)"}</span><select id="f_half" ${single?"":"disabled"}>
+        <option value="full" ${d.half==="full"?"selected":""}>เต็มวัน</option><option value="am" ${d.half==="am"?"selected":""}>ครึ่งวันเช้า</option><option value="pm" ${d.half==="pm"?"selected":""}>ครึ่งวันบ่าย</option></select></label>
+      <label class="field"><span id="f_days_lbl">จำนวนวันทำการ (คำนวณอัตโนมัติ ${fmtN(auto)} วัน)</span><input type="number" id="f_days" min="0" step="0.5" value="${esc(d.daysOverride)}" placeholder="${fmtN(auto)}"></label>
+      <label class="field"><span>เลขที่ใบลา / หนังสือ (ถ้ามี)</span><input id="f_doc" value="${esc(d.docNo)}"></label>
+      <label class="field wide"><span>เหตุผล / หมายเหตุ</span><input id="f_note" value="${esc(d.note)}" placeholder="เช่น ไข้หวัด มีใบรับรองแพทย์"></label>
+    </div>
+    <div class="row"><span class="muted" style="font-size:.85rem">นับเฉพาะวันทำการ ไม่รวมเสาร์-อาทิตย์และวันหยุดราชการในหน้าตั้งค่า</span><span class="spacer"></span>
+      <button type="button" class="ghost" data-act="reset-draft">ล้างฟอร์ม</button><button type="submit" class="primary">บันทึกการลา</button></div>
+    <div id="calcBox" style="display:contents">${info}</div>
+  </form>`;
+}
+
+function viewStaff(){
+  const e = S.editStaff;
+  const sq = (S.sq||"").trim().toLowerCase();
+  const all = staffList();
+  const list = all.filter(p => (S.sGroup==="all"||!S.sGroup||groupOf(p)===S.sGroup) && (!sq || `${p.name} ${posLine(p)} ${orgLine(p)}`.toLowerCase().includes(sq)));
+  const typeOpts = sel => Object.entries(S.config.types).map(([k,v])=>`<option value="${esc(k)}" ${sel===k?"selected":""}>${esc(v.label)}</option>`).join("");
+  const gOpts = [...ORG.map(o=>o.g), ...distinct(all.map(groupOf)).filter(g=>!ORG.some(o=>o.g===g))].map(g=>`<option value="${esc(g)}" ${S.sGroup===g?"selected":""}>${esc(g)}</option>`).join("");
+  const pg = paginate(list, "staff");
+  const rows = pg.items.map((p,i)=>`<tr><td class="no">${pg.start+i+1}</td><td><div class="name-cell"><span class="av" aria-hidden="true">${esc(initial(p.name))}</span><span class="nm"><b>${esc(p.name)}</b><small>${esc(posLine(p))}${orgLine(p)?" · "+esc(orgLine(p)):""}</small></span></div></td>
+    <td>${esc(typeCfg(p).label)}</td>
+    <td>${roleStatus(p)}</td>
+    <td class="num">${(p.leaves||[]).length}</td>
+    <td>${actBtns(p._id, true)}</td></tr>`).join("");
+  return `<div class="row"><div><h2>รายชื่อบุคลากร</h2><span class="muted">ทั้งหมด ${all.length} คน · บุคลากรเข้าระบบด้วยชื่อ-นามสกุลและเลขบัตรประชาชน และเห็นเฉพาะการลาของตนเอง</span></div>
+    <span class="spacer"></span><button class="primary icon-btn" data-act="new-staff">${ICON.plus}เพิ่มบุคลากร</button></div>
+  <div class="toolbar"><input id="sq" type="search" placeholder="ค้นหาชื่อ ตำแหน่ง กลุ่มงาน งาน" value="${esc(S.sq||"")}">
+    <select id="sgroup"><option value="all">ทุกกลุ่มงาน</option>${gOpts}</select>
+    <span class="muted" style="font-size:.85rem">พบ ${list.length} คน</span></div>
+  ${all.length ? `<div class="tbl-wrap"><table><thead><tr><th class="no">ที่</th><th>ชื่อ-สกุล</th><th>ประเภท</th><th>บทบาท / บัญชี</th><th class="num">รายการลา</th><th class="num">จัดการ</th></tr></thead>
+  <tbody>${rows||`<tr><td colspan="6" class="muted">ไม่พบรายชื่อตามเงื่อนไข</td></tr>`}</tbody></table></div>${pg.html}`
+  : `<div class="panel empty"><h3>ยังไม่มีบุคลากรในระบบ</h3><p>กด “เพิ่มบุคลากร” เพื่อเริ่มสร้างฐานข้อมูลบุคลากร</p><button class="primary icon-btn" data-act="new-staff">${ICON.plus}เพิ่มบุคลากรคนแรก</button></div>`}`;
+}
+
+function staffModal(){
+  const e = S.editStaff; if(!e) return "";
+  const typeOpts = Object.entries(S.config.types).map(([k,v])=>`<option value="${esc(k)}" ${e.ptype===k?"selected":""}>${esc(v.label)}</option>`).join("");
+  // keep a section that isn't in ORG, so editing someone never blanks their งาน
+  const base = sectionsOf(e.group);
+  const subs = e.section && !base.includes(e.section) ? [...base, e.section] : base;
+  return `<div class="overlay" data-act="overlay"><form class="modal" id="staffForm" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="m-head"><span class="badge">${e.id?ICON.edit:ICON.user}</span><div><h3 id="mTitle">${e.id?"แก้ไขข้อมูลบุคลากร":"เพิ่มบุคลากรใหม่"}</h3><span class="muted" style="font-size:.85rem">${e.id?esc(e.name):"กรอกข้อมูลแล้วกดบันทึก"}</span></div>
+      <span class="spacer"></span><button type="button" class="ghost small" data-act="cancel-staff" aria-label="ปิด">✕</button></div>
+    <div class="m-body"><div class="grid-form">
+      <label class="field"><span>ชื่อ-สกุล *</span><input id="s_name" required value="${esc(e.name)}" placeholder="นายสมชาย ใจดี"></label>
+      <label class="field"><span>ตำแหน่ง</span><input id="s_pos" value="${esc(e.position)}" placeholder="เช่น นักทรัพยากรบุคคล"></label>
+      <label class="field"><span>ระดับ</span><select id="s_level"><option value="">— ไม่ระบุ —</option>${levelOptions(e.level)}</select></label>
+      <label class="field"><span>กลุ่มงาน</span><select id="s_group"><option value="">— เลือกกลุ่มงาน —</option>${groupOptions(e.group)}</select></label>
+      <label class="field"><span>งาน</span>${subs.length
+        ? `<select id="s_section"><option value="">— เลือกงาน —</option>${subs.map(x=>`<option value="${esc(x)}" ${e.section===x?"selected":""}>${esc(x)}${base.includes(x)?"":" (ข้อมูลเดิม)"}</option>`).join("")}</select>`
+        : `<select id="s_section" disabled><option value="">${e.group?"กลุ่มงานนี้ไม่มีงานย่อย":"เลือกกลุ่มงานก่อน"}</option></select>`}</label>
+      <label class="field"><span>ประเภทบุคลากร</span><select id="s_type">${typeOpts}</select></label>
+      <label class="field"><span>บทบาทในระบบ</span><select id="s_role"><option value="บุคลากร" ${e.role!=="HR"?"selected":""}>บุคลากร (ดูการลาของตนเอง)</option><option value="HR" ${e.role==="HR"?"selected":""}>เจ้าหน้าที่ HR (จัดการทั้งระบบ)</option></select></label>
+      <label class="field"><span>เลขบัตรประชาชน 13 หลัก ${e.id?"(เว้นว่าง = ใช้รหัสผ่านเดิม)":"*"}</span><input id="s_cid" inputmode="numeric" autocomplete="off" maxlength="17" value="${esc(e.cid||"")}" placeholder="${e.id?"กรอกเมื่อต้องการรีเซ็ตรหัสผ่าน":"ใช้เป็นรหัสผ่านเริ่มต้น"}"></label>
+      <div class="field wide"><div class="notice">ผู้ใช้งาน = ชื่อ-นามสกุลตามที่บันทึก · รหัสผ่านเริ่มต้น = เลขบัตรประชาชน ระบบเก็บเลขบัตรแบบเข้ารหัส ไม่เก็บตัวเลขจริง</div></div>
+    </div></div>
+    <div class="m-foot">${e.id?`<button type="button" class="ghost icon-btn" style="color:var(--danger);margin-right:auto" data-act="ask-del-staff" data-id="${esc(e.id)}">${ICON.trash}ลบบุคลากรนี้</button>`:""}
+      <button type="button" class="ghost" data-act="cancel-staff">ยกเลิก</button><button type="submit" class="primary">${e.id?"บันทึกการแก้ไข":"เพิ่มบุคลากร"}</button></div>
+  </form></div>`;
+}
+function deleteModal(){
+  const id = S.delStaff; const p = id && S.staff.get(id); if(!p) return "";
+  const n = (p.leaves||[]).length;
+  return `<div class="overlay" data-act="overlay"><div class="modal sm" role="alertdialog" aria-modal="true" aria-labelledby="dTitle">
+    <div class="m-head danger"><span class="badge">${ICON.trash}</span><h3 id="dTitle">ลบบุคลากร</h3></div>
+    <div class="m-body"><p style="margin:0">ต้องการลบ <b>${esc(p.name)}</b> ออกจากระบบใช่ไหม</p>
+      ${n?`<div class="notice warn">ประวัติการลา ${n} รายการของบุคคลนี้จะถูกลบไปด้วย และกู้คืนไม่ได้</div>`:`<div class="notice">บุคคลนี้ยังไม่มีประวัติการลา</div>`}</div>
+    <div class="m-foot"><button type="button" class="ghost" data-act="cancel-del">ยกเลิก</button><button type="button" class="del-strong icon-btn" id="confirmDel" data-act="del-staff" data-id="${esc(id)}">${ICON.trash}ลบถาวร</button></div>
+  </div></div>`;
+}
+
+function roleStatus(p){
+  const r = p.role==="HR" ? `<span class="pill" style="background:var(--vac-soft);color:var(--vac)">HR</span>` : "";
+  const st = !p.hasPassword ? `<span class="pill warn">ยังไม่มีรหัสผ่าน</span>` : p.mustChange ? `<span class="pill k-per">ใช้เลขบัตรเป็นรหัส</span>` : `<span class="pill" style="background:var(--accent-soft);color:var(--accent-strong)">ตั้งรหัสผ่านเองแล้ว</span>`;
+  return `<span class="row" style="gap:6px;display:inline-flex">${r}${st}</span>`;
+}
+function thDateTime(iso){ if(!iso) return "ยังไม่เคยเข้าใช้"; const d=new Date(iso); if(isNaN(d)) return "–"; const p=n=>String(n).padStart(2,"0"); return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear()+543} ${p(d.getHours())}:${p(d.getMinutes())} น.`; }
+function viewAccounts(){
+  const all = staffList();
+  if(S.previewAs){
+    const p = S.staff.get(S.previewAs);
+    if(p) return `<div class="row"><button class="ghost small" data-act="preview-close">← กลับไปหน้าบัญชีผู้ใช้</button><span class="spacer"></span><span class="pill neutral">${ICON.eye} ตัวอย่างหน้าที่ ${esc(p.name)} เห็น</span></div>
+      <div class="notice ok">นี่คือหน้าที่บุคคลนี้เห็นหลังเข้าสู่ระบบ ข้อมูลของคนอื่นจะไม่แสดง</div>${mineHtml(p)}`;
+    S.previewAs=null;
+  }
+  const used = all.filter(p=>p.lastLogin).length, changed = all.filter(p=>p.hasPassword && !p.mustChange).length;
+  const aq=(S.aq||"").trim().toLowerCase();
+  const list = all.filter(p => (S.aStatus==="hr"?p.role==="HR":S.aStatus==="never"?!p.lastLogin:S.aStatus==="default"?p.mustChange:true) && (!aq || `${p.name} ${posLine(p)} ${orgLine(p)}`.toLowerCase().includes(aq)));
+  const pg = paginate(list, "accounts");
+  const rows = pg.items.map((p,i)=>`<tr><td class="no">${pg.start+i+1}</td>
+    <td><div class="name-cell"><span class="av" aria-hidden="true">${esc(initial(p.name))}</span><span class="nm"><b>${esc(p.name)}</b><small>${esc(orgLine(p)||posLine(p))}</small></span></div></td>
+    <td>${roleStatus(p)}</td><td>${esc(thDateTime(p.lastLogin))}</td>
+    <td><div class="acts"><button class="view" data-act="preview" data-id="${esc(p._id)}">${ICON.eye}<span>ดูแบบที่เขาเห็น</span></button><button class="edit" data-act="reset-open" data-id="${esc(p._id)}">${ICON.user}<span>รีเซ็ตรหัสผ่าน</span></button></div></td></tr>`).join("");
+  const sOpt=(v,l)=>`<option value="${v}" ${(S.aStatus||"all")===v?"selected":""}>${l}</option>`;
+  return `<div><h2>บัญชีผู้ใช้</h2><span class="muted">บุคลากรทุกคนในรายชื่อเข้าระบบได้ทันที และเห็นเฉพาะวันลาและรายละเอียดการลาของตนเอง</span></div>
+  <div class="stats">
+    <div class="stat all"><span class="lbl"><i></i>บัญชีทั้งหมด</span><span class="val">${all.length}<small>คน</small></span></div>
+    <div class="stat vac"><span class="lbl"><i></i>เคยเข้าใช้แล้ว</span><span class="val">${used}<small>คน</small></span></div>
+    <div class="stat per"><span class="lbl"><i></i>ยังใช้เลขบัตรเป็นรหัส</span><span class="val">${all.length-changed}<small>คน</small></span></div>
+  </div>
+  <div class="panel steps"><h3>วิธีเข้าใช้งานของบุคลากร</h3><ol>
+    <li>เปิดลิงก์ระบบ (ลิงก์เดียวกับที่ HR ใช้)</li>
+    <li><b>ผู้ใช้งาน</b> = ชื่อ-นามสกุลตามที่บันทึกในระบบ (จะพิมพ์คำนำหน้าหรือไม่ก็ได้)</li>
+    <li><b>รหัสผ่าน</b> = เลขบัตรประชาชน 13 หลัก หลังเข้าครั้งแรกระบบจะแนะนำให้ตั้งรหัสผ่านใหม่</li>
+    <li>ลืมรหัสผ่าน: HR กด “รีเซ็ตรหัสผ่าน” แล้วกรอกเลขบัตรของบุคคลนั้น รหัสผ่านจะกลับเป็นเลขบัตรประชาชน</li></ol></div>
+  <div class="toolbar"><input id="aq" type="search" placeholder="ค้นหาชื่อ ตำแหน่ง กลุ่มงาน" value="${esc(S.aq||"")}">
+    <select id="astatus">${sOpt("all","ทุกบัญชี")}${sOpt("hr","เฉพาะ HR")}${sOpt("never","ยังไม่เคยเข้าใช้")}${sOpt("default","ยังใช้เลขบัตรเป็นรหัส")}</select></div>
+  <div class="tbl-wrap"><table><thead><tr><th class="no">ที่</th><th>ชื่อ-สกุล (ผู้ใช้งาน)</th><th>บทบาท / สถานะรหัสผ่าน</th><th>เข้าใช้ล่าสุด</th><th class="num">จัดการ</th></tr></thead>
+  <tbody>${rows||`<tr><td colspan="5" class="muted">ไม่พบรายชื่อตามเงื่อนไข</td></tr>`}</tbody></table></div>${pg.html}`;
+}
+function resetModal(){
+  const p = S.resetFor && S.staff.get(S.resetFor); if(!p) return "";
+  return `<div class="overlay" data-act="overlay"><form class="modal sm" id="resetForm" role="dialog" aria-modal="true" aria-labelledby="rTitle">
+    <div class="m-head"><span class="badge">${ICON.user}</span><div><h3 id="rTitle">รีเซ็ตรหัสผ่าน</h3><span class="muted" style="font-size:.85rem">${esc(p.name)}</span></div></div>
+    <div class="m-body"><label class="field"><span>เลขบัตรประชาชน 13 หลักของบุคคลนี้</span><input id="r_cid" inputmode="numeric" autocomplete="off" maxlength="17" required></label>
+      <div class="notice">รหัสผ่านจะกลับเป็นเลขบัตรประชาชน และระบบจะแนะนำให้เจ้าของบัญชีตั้งรหัสใหม่หลังเข้าใช้</div></div>
+    <div class="m-foot"><button type="button" class="ghost" data-act="reset-close">ยกเลิก</button><button type="submit" class="primary">รีเซ็ตรหัสผ่าน</button></div></form></div>`;
+}
+function pwModalHtml(){
+  if(!S.pwModal) return "";
+  return `<div class="overlay" data-act="overlay"><form class="modal sm" id="pwForm" role="dialog" aria-modal="true" aria-labelledby="pTitle">
+    <div class="m-head"><span class="badge">${ICON.user}</span><div><h3 id="pTitle">เปลี่ยนรหัสผ่าน</h3><span class="muted" style="font-size:.85rem">${esc(S.me?.name||"")}</span></div></div>
+    <div class="m-body">${S.pwModal.first?`<div class="notice ok">คุณยังใช้เลขบัตรประชาชนเป็นรหัสผ่าน แนะนำให้ตั้งรหัสผ่านใหม่ที่เดาได้ยาก</div>`:""}
+      <label class="field"><span>รหัสผ่านปัจจุบัน</span><input id="p_old" type="password" autocomplete="current-password" required></label>
+      <label class="field"><span>รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)</span><input id="p_new" type="password" autocomplete="new-password" minlength="8" required></label>
+      <label class="field"><span>ยืนยันรหัสผ่านใหม่</span><input id="p_new2" type="password" autocomplete="new-password" minlength="8" required></label></div>
+    <div class="m-foot"><button type="button" class="ghost" data-act="pw-close">${S.pwModal.first?"ไว้ภายหลัง":"ยกเลิก"}</button><button type="submit" class="primary">บันทึกรหัสผ่านใหม่</button></div></form></div>`;
+}
+function viewLogin(){
+  return `<div class="login-wrap"><form class="panel login" id="loginForm">
+    <div class="login-head"><div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#06352d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="m8.5 15 2.5 2.5 4.5-5"/></svg></div>
+      <div><h2>เข้าสู่ระบบ</h2><span class="muted">ระบบวันลาบุคลากร</span></div></div>
+    <label class="field"><span>ผู้ใช้งาน (ชื่อ-นามสกุล)</span><input id="lg_user" autocomplete="username" placeholder="เช่น สุดา ใจงาม" required value="${esc(S.lgUser||"")}"></label>
+    <label class="field"><span>รหัสผ่าน (เลขบัตรประชาชน 13 หลัก หรือรหัสที่ตั้งเอง)</span><div class="pw"><input id="lg_pw" type="password" autocomplete="current-password" required><button type="button" class="ghost small" data-act="pw-toggle">แสดง</button></div></label>
+    <button type="submit" class="primary" id="lg_btn" ${S.busy?"disabled":""}>${S.busy?"กำลังตรวจสอบ…":"เข้าสู่ระบบ"}</button>
+    <p class="muted" style="font-size:.85rem;margin:0">ลืมรหัสผ่าน ติดต่อเจ้าหน้าที่ HR เพื่อรีเซ็ตรหัสผ่าน</p></form></div>`;
+}
+function viewSettings(){
+  const c = S.config;
+  const cols = [["sick","ลาป่วย"],["personal","ลากิจส่วนตัว"],["vacation","ลาพักผ่อน/ปี"],["carryCap","ลาพักผ่อนสะสมรวมไม่เกิน"]];
+  const rows = Object.entries(c.types).map(([k,t])=>`<tr><td><b>${esc(t.label)}</b></td>${cols.map(([f])=>`<td><input type="number" min="0" step="1" style="width:84px" data-cfg="${esc(k)}.${f}" value="${esc(t[f])}" aria-label="${esc(t.label)} ${f}"></td>`).join("")}</tr>`).join("");
+  const [fs, fe] = fyRange(S.fy);
+  const hol = (c.holidays||[]).slice().sort((a,b)=>a.d.localeCompare(b.d));
+  const holFy = hol.filter(h=>h.d>=fs && h.d<=fe);
+  return `<div><h2>ตั้งค่าสิทธิ์การลาและวันหยุด</h2><span class="muted">หน่วยเป็นวันทำการต่อปีงบประมาณ ค่าเริ่มต้นอ้างอิงระเบียบการลาของข้าราชการ พ.ศ. 2555 และประกาศ คพร. โปรดตรวจสอบกับระเบียบที่หน่วยงานใช้จริงก่อนใช้งาน</span></div>
+  <div class="tbl-wrap"><table><thead><tr><th>ประเภทบุคลากร</th>${cols.map(([,l])=>`<th>${l}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="panel row"><label class="field" style="flex:0 0 220px"><span>ปีงบประมาณที่เริ่มใช้ระบบ</span><input type="number" id="cfg_start" value="${esc(c.startFY)}"></label>
+    <span class="muted" style="flex:1 1 260px;font-size:.88rem">ปีนี้ระบบจะไม่คำนวณยอดสะสมจากปีก่อน ให้กรอกยอดลาพักผ่อนสะสมยกมาของแต่ละคนในหน้าบุคคล</span>
+    <button class="primary" data-act="save-cfg">บันทึกการตั้งค่า</button></div>
+  <ul class="legal">
+    <li>ข้าราชการ: ลาป่วยได้รับเงินเดือนไม่เกิน 60 วันทำการ, ลากิจส่วนตัว 45 วันทำการ, ลาพักผ่อน 10 วันทำการ สะสมรวมไม่เกิน 20 วันทำการ</li>
+    <li>ระบบไม่เก็บวันเริ่มปฏิบัติงาน จึงไม่คำนวณกรณีพิเศษให้อัตโนมัติ ได้แก่ ลากิจปีแรก 15 วัน, สะสมลาพักผ่อนได้ 30 วันเมื่อรับราชการครบ 10 ปี และไม่มีสิทธิลาพักผ่อนเมื่อทำงานไม่ถึง 6 เดือน — กรณีสะสม 30 วัน ให้กรอกยอดยกมาเองในหน้ารายบุคคล</li>
+    <li>พนักงานราชการ พนักงานกระทรวงสาธารณสุข และลูกจ้างชั่วคราว: ค่าเริ่มต้นเป็นค่าประมาณ ปรับตามประกาศ คพร. ระเบียบกระทรวงสาธารณสุข หรือสัญญาจ้างของหน่วยงาน</li>
+  </ul>
+  <div class="row"><h3>วันหยุดราชการ ปีงบประมาณ ${S.fy}</h3><span class="spacer"></span><span class="muted" style="font-size:.85rem">${holFy.length} วัน · รวมวันหยุดตามประเพณีทางจันทรคติและวันหยุดพิเศษตามมติ ครม. ด้วย</span></div>
+  <form class="panel row" id="holForm"><div style="flex:0 1 220px">${dateField("h_d", S.hd||"", {label:"วันที่"})}</div><input id="h_n" value="${esc(S.hn||"")}" placeholder="ชื่อวันหยุด" style="flex:1 1 220px" required><button type="submit">+ เพิ่มวันหยุด</button></form>
+  <div class="tbl-wrap"><table><thead><tr><th>วันที่</th><th>วันหยุด</th><th></th></tr></thead><tbody>
+  ${holFy.map(h=>`<tr><td>${thDate(h.d)}</td><td>${esc(h.n)}</td><td><button class="small ghost" data-act="del-hol" data-d="${esc(h.d)}">ลบ</button></td></tr>`).join("")||`<tr><td colspan="3" class="muted">ยังไม่มีวันหยุดในปีงบประมาณนี้</td></tr>`}
+  </tbody></table></div>`;
+}
+
+function viewMine(){
+  if(S.myDoc===undefined) return `<div class="panel empty"><h3>กำลังโหลดข้อมูลการลาของคุณ…</h3></div>`;
+  if(!S.myDoc) return `<div class="panel empty"><h3>ยังไม่พบข้อมูลการลาของคุณ</h3>
+    <p>ติดต่อเจ้าหน้าที่ HR</p></div>`;
+  return mineHtml(S.myDoc);
+}
+function mineHtml(p){
+  return `<div class="person-head"><div><h2>การลาของฉัน</h2><span class="muted">${esc(p.name)} · ${esc(posLine(p))}${orgLine(p)?" · "+esc(orgLine(p)):""} · ${esc(typeCfg(p).label)}</span></div></div>
+  <span class="muted">ปีงบประมาณ ${S.fy} (${thDate(fyRange(S.fy)[0])} – ${thDate(fyRange(S.fy)[1])}) · หน่วยเป็นวันทำการ</span>
+  ${balanceCards(p, S.fy)}
+  <h3>รายการลา</h3>${leaveTable(p, S.fy, false)}
+  <p class="muted" style="font-size:.85rem">หากข้อมูลไม่ตรงกับใบลา โปรดติดต่อเจ้าหน้าที่ HR</p>`;
+}
+
+function render(){
+  fyOptions();
+  const active = document.activeElement; const aid = active && active.id; const sel = aid && active.selectionStart;
+  const ub=document.getElementById("userbox");
+  if(!S.token){
+    $tabs.hidden=true; ub.hidden=true; document.getElementById("fyWrap").hidden=true;
+    document.getElementById("roleLine").textContent="กรุณาเข้าสู่ระบบ";
+    $app.innerHTML = viewLogin(); document.getElementById("modal").innerHTML=""; S._mh=""; document.body.style.overflow="";
+    return;
+  }
+  document.getElementById("fyWrap").hidden=false; ub.hidden=false;
+  ub.innerHTML = `<span class="who"><b>${esc(S.me?.name||"")}</b><small>${S.isHR?"เจ้าหน้าที่ HR":"บุคลากร"}</small></span><button class="hb" data-act="pw-open">เปลี่ยนรหัสผ่าน</button><button class="hb" data-act="logout">ออกจากระบบ</button>`;
+  document.getElementById("roleLine").textContent = S.isHR ? "โหมดเจ้าหน้าที่ HR · บันทึกและดูการลาของบุคลากรทุกคน" : "การลาของฉัน · แสดงเฉพาะข้อมูลของคุณ";
+  if(S.isHR){
+    $tabs.hidden=false; $tabs.innerHTML = tabsHtml();
+    $app.innerHTML = ({summary:viewSummary, person:viewPerson, record:viewRecord, staff:viewStaff, accounts:viewAccounts, settings:viewSettings}[S.view]||viewSummary)();
+  } else {
+    $tabs.hidden=true; $app.innerHTML = viewMine();
+  }
+  const $m = document.getElementById("modal");
+  if(document.getElementById("s_name")) captureStaffForm();
+  const mh = S.pwModal ? pwModalHtml() : !S.isHR ? "" : (S.delStaff ? deleteModal() : S.resetFor ? resetModal() : staffModal());
+  if(S._mh !== mh){ $m.innerHTML = mh; S._mh = mh; }
+  document.body.style.overflow = mh ? "hidden" : "";
+  if(aid){ const el=document.getElementById(aid); if(el){ el.focus(); try{ if(sel!=null) el.setSelectionRange(sel,sel); }catch(e){} } }
+}
+
+// ---------- events ----------
+document.addEventListener("click", async ev => {
+  if(S.tdp && !ev.target.closest(".cal") && !ev.target.closest(".tdp-btn")){ S.tdp=null; document.querySelector(".cal")?.remove(); }
+  const t = ev.target.closest("[data-act]"); if(!t) return;
+  if(t.dataset.act==="tdp-open"){ const id=t.dataset.id; if(S.tdp?.id===id){ S.tdp=null; } else { const cur=document.getElementById(id)?.value || todayIso(); const [y,m]=cur.split("-").map(Number); S.tdp={id,y,m:m-1}; } render(); return; }
+  if(t.dataset.act==="tdp-nav"){ let m=S.tdp.m+Number(t.dataset.d), y=S.tdp.y; if(m<0){m=11;y--;} if(m>11){m=0;y++;} S.tdp={...S.tdp,y,m}; render(); return; }
+  if(t.dataset.act==="tdp-pick"){ const id=t.dataset.id; setDateValue(id, t.dataset.iso); S.tdp=null; const txt=document.getElementById(id+"_txt"); txt.dispatchEvent(new Event("change",{bubbles:true})); render(); txt && document.getElementById(id+"_txt")?.focus(); return; }
+  const a = t.dataset.act, id = t.dataset.id;
+  if(a==="page"){ S.page={...(S.page||{}), [t.dataset.k]:Number(t.dataset.p)}; render(); t.closest(".pager")?.previousElementSibling?.scrollIntoView?.({block:"nearest"}); return; }
+  if(a==="logout"){ doLogout(false); return; }
+  if(a==="pw-open"){ S.pwModal={first:false}; render(); document.getElementById("p_old")?.focus(); return; }
+  if(a==="pw-close"){ S.pwModal=null; render(); return; }
+  if(a==="pw-toggle"){ const i=document.getElementById("lg_pw"); if(i){ i.type=i.type==="password"?"text":"password"; t.textContent=i.type==="password"?"แสดง":"ซ่อน"; } return; }
+  if(a==="reset-open"){ S.resetFor=id; render(); document.getElementById("r_cid")?.focus(); return; }
+  if(a==="reset-close"){ S.resetFor=null; render(); return; }
+  if(a==="preview"){ S.previewAs=id; render(); window.scrollTo(0,0); return; }
+  if(a==="preview-close"){ S.previewAs=null; render(); return; }
+  if(a==="tab"){ S.view=t.dataset.v; S.confirmKey=null; S.previewAs=null; if(S.view!=="staff") S.editStaff=null; render(); window.scrollTo(0,0); }
+  else if(a==="person"){ S.personId=id; S.view="person"; S.confirmKey=null; render(); window.scrollTo(0,0); }
+  else if(a==="record-for"){ S.draft={staffId:id, kind:"sick", start:todayIso(), end:todayIso(), half:"full", emergency:false, note:"", docNo:"", daysOverride:""}; S.view="record"; render(); }
+  else if(a==="reset-draft"){ S.draft=null; render(); }
+  else if(a==="ask"){ S.confirmKey=t.dataset.k; render(); }
+  else if(a==="cancel"){ S.confirmKey=null; render(); }
+  else if(a==="del-leave"){
+    S.confirmKey=null; try{ await call("deleteLeave", id); toast("ลบรายการลาแล้ว"); }catch(e){}
+  }
+  else if(a==="save-carry" || a==="clear-carry"){
+    const val = k => a==="clear-carry" ? "" : document.getElementById(k).value.trim();
+    try{ await call("saveCarry", S.personId, S.fy, {sick:val("carry_sick"), personal:val("carry_personal"), vacation:val("carry_vacation")}); toast(a==="clear-carry"?"ล้างยอดที่กรอกเองแล้ว":"บันทึกยอดสะสมยกมาแล้ว"); }catch(e){}
+  }
+
+
+  else if(a==="new-staff"){ S.editStaff={id:null,name:"",position:"",level:"",group:"",section:"",ptype:"gov",role:"บุคลากร",cid:""}; render(); document.getElementById("s_name")?.focus(); }
+  else if(a==="ask-del-staff"){ captureStaffForm(); S.delStaff=id; render(); document.getElementById("confirmDel")?.focus(); }
+  else if(a==="cancel-del"){ S.delStaff=null; render(); }
+  else if(a==="overlay"){ if(ev.target===t && !ev.target.closest(".cal")){ if(S.pwModal) S.pwModal=null; else if(S.delStaff) S.delStaff=null; else if(S.resetFor) S.resetFor=null; else S.editStaff=null; render(); } }
+  else if(a==="edit-staff"){ const p=S.staff.get(id); S.editStaff={id,name:p.name||"",position:p.position||"",level:p.level||"",group:groupOf(p),section:p.section||"",ptype:p.ptype||"gov",role:p.role||"บุคลากร",cid:""}; render(); document.getElementById("s_name")?.focus(); }
+  else if(a==="cancel-staff"){ S.editStaff=null; render(); }
+  else if(a==="del-staff"){ const nm=S.staff.get(id)?.name||""; S.delStaff=null; if(S.editStaff?.id===id) S.editStaff=null; if(S.personId===id && S.view==="person") S.view="summary"; render();
+    try{ await call("deleteStaff", id); toast(`ลบ ${nm} แล้ว`); }catch(e){} }
+  else if(a==="save-cfg"){
+    const cfg = JSON.parse(JSON.stringify(S.config));
+    document.querySelectorAll("[data-cfg]").forEach(inp=>{ const [k,f]=inp.dataset.cfg.split("."); cfg.types[k][f]=Number(inp.value)||0; });
+    cfg.startFY = Number(document.getElementById("cfg_start").value)||cfg.startFY;
+    try{ await call("saveTypes", cfg.types, cfg.startFY); toast("บันทึกการตั้งค่าแล้ว"); }catch(e){}
+  }
+  else if(a==="del-hol"){ try{ await call("deleteHoliday", t.dataset.d); toast("ลบวันหยุดแล้ว"); }catch(e){} }
+  else if(a==="csv"){ exportCsv(); }
+});
+document.addEventListener("keydown", ev => { if(ev.key==="Escape" && S.tdp){ S.tdp=null; render(); return; } if(ev.key==="Escape" && (S.delStaff||S.editStaff||S.resetFor||S.pwModal)){ if(S.pwModal) S.pwModal=null; else if(S.delStaff) S.delStaff=null; else if(S.resetFor) S.resetFor=null; else S.editStaff=null; render(); return; } if(ev.key==="Enter" && ev.target.matches("tr[data-act]")) ev.target.click(); });
+$fy.addEventListener("change", () => { S.fy = Number($fy.value); render(); });
+
+function readDraft(){
+  const d = S.draft; if(!d) return;
+  const g = id => document.getElementById(id);
+  if(g("f_staff")) d.staffId = g("f_staff").value;
+  const k = document.querySelector('input[name="f_kind"]:checked'); if(k) d.kind = k.value;
+  if(g("f_start")) d.start = g("f_start").value;
+  if(g("f_end")) d.end = g("f_end").value;
+  if(d.end < d.start) d.end = d.start;
+  if(g("f_half")) d.half = d.start===d.end ? g("f_half").value : "full";
+  d.emergency = d.kind==="personal" && !!g("f_emerg")?.checked;
+  if(g("f_days")) d.daysOverride = g("f_days").value;
+  if(g("f_note")) d.note = g("f_note").value;
+  if(g("f_doc")) d.docNo = g("f_doc").value;
+}
+function refreshCalc(){
+  const box=document.getElementById("calcBox"); if(!box) return;
+  if(document.getElementById("f_end")?.value!==S.draft.end) setDateValue("f_end", S.draft.end);
+  const t=document.createElement("template"); t.innerHTML=viewRecord(); const c=t.content;
+  box.innerHTML=c.getElementById("calcBox")?.innerHTML||"";
+  for(const id of ["f_half_lbl","f_days_lbl"]){ const a=document.getElementById(id), b=c.getElementById(id); if(a&&b) a.textContent=b.textContent; }
+  const dy=document.getElementById("f_days"), ndy=c.getElementById("f_days"); if(dy&&ndy) dy.placeholder=ndy.placeholder;
+  const hf=document.getElementById("f_half"), nhf=c.getElementById("f_half"); if(hf&&nhf){ hf.disabled=nhf.disabled; hf.value=S.draft.half; }
+}
+function captureStaffForm(){
+  const e=S.editStaff; if(!e) return; const g=id=>document.getElementById(id);
+  if(g("s_name")) e.name=g("s_name").value; if(g("s_pos")) e.position=g("s_pos").value; if(g("s_level")) e.level=g("s_level").value; if(g("s_group")) e.group=g("s_group").value; if(g("s_section") && !g("s_section").disabled) e.section=g("s_section").value; else if(g("s_section")) e.section="";
+  if(g("s_type")) e.ptype=g("s_type").value; if(g("s_role")) e.role=g("s_role").value; if(g("s_cid")) e.cid=g("s_cid").value;
+}
+document.addEventListener("change", ev => {
+  const id = ev.target.id || ev.target.name;
+  if(S.view==="record" && /^f_/.test(id)){
+    readDraft();
+    if(["f_start_txt","f_end_txt","f_half","f_kind","f_staff","f_emerg"].includes(id)){ S.draft.daysOverride=""; const fd=document.getElementById("f_days"); if(fd) fd.value=""; }
+    // text fields: patch in place, a full re-render here would swallow a click on the save button
+    if(["f_start_txt","f_end_txt","f_note","f_doc","f_days"].includes(id)) refreshCalc(); else render();
+  }
+  if(id==="pageSize"){ S.pageSize=Number(ev.target.value)||10; try{ localStorage.setItem("leave.pageSize", S.pageSize); }catch(e){} resetPages(); render(); }
+  if(id==="ftype"){ S.filterType=ev.target.value; resetPages(); render(); }
+  if(id==="fgroup"){ S.filterGroup=ev.target.value; resetPages(); render(); }
+  if(id==="sgroup"){ S.sGroup=ev.target.value; resetPages(); render(); }
+  if(id==="astatus"){ S.aStatus=ev.target.value; resetPages(); render(); }
+  if(id==="s_group"){ captureStaffForm(); if(!sectionsOf(S.editStaff.group).includes(S.editStaff.section)) S.editStaff.section=""; render(); }
+});
+document.addEventListener("change", ev => {
+  const t=ev.target;
+  if(t.id && t.id.endsWith("_txt") && t.closest(".tdp")){
+    const id=t.id.slice(0,-4); const v=t.value.trim();
+    if(!v){ setDateValue(id,""); return; }
+    const iso=beToIso(v);
+    if(!iso){ toast("รูปแบบวันที่ไม่ถูกต้อง ใช้ วว/ดด/ปปปป เป็น พ.ศ. เช่น 05/10/2569"); ev.stopImmediatePropagation(); setDateValue(id, document.getElementById(id)?.value||""); return; }
+    setDateValue(id, iso);
+  }
+  if(t.id==="tdp_m" || t.id==="tdp_y"){ ev.stopImmediatePropagation(); S.tdp.m=+document.getElementById("tdp_m").value; S.tdp.y=+document.getElementById("tdp_y").value; render(); }
+}, true);
+let searchT;
+document.addEventListener("input", ev => {
+  const id = ev.target.id;
+  if(id==="q"){ S.q=ev.target.value; resetPages(); render(); }
+  else if(id==="sq"){ S.sq=ev.target.value; resetPages(); render(); }
+  else if(id==="aq"){ S.aq=ev.target.value; resetPages(); render(); }
+  else if(id==="lg_user"){ S.lgUser=ev.target.value; }
+  else if(id==="h_n"){ S.hn=ev.target.value; }
+  else if(S.view==="record" && (id==="f_note"||id==="f_doc"||id==="f_days")){ readDraft(); if(id==="f_days") refreshCalc(); }
+
+});
+
+document.addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const f = ev.target;
+  if(f.id==="leaveForm"){
+    readDraft(); const d=S.draft;
+    if(!d.staffId){ toast("เลือกบุคลากรก่อน"); return; }
+    if(!d.start||!d.end){ toast("ระบุวันที่ลา"); return; }
+    const p = S.staff.get(d.staffId); if(!p) return;
+    const days = d.daysOverride!=="" ? Number(d.daysOverride) : workingDays(d.start,d.end,d.half);
+    if(!(days>0)){ toast("จำนวนวันทำการเป็น 0 ตรวจสอบวันที่หรือวันหยุด"); return; }
+    try{ await call("addLeave", {staffId:d.staffId, kind:d.kind, start:d.start, end:d.end, half:d.start===d.end?d.half:"full", days, emergency:!!d.emergency, note:d.note.trim(), docNo:d.docNo.trim()});
+      toast(`บันทึก${KINDS[d.kind].label}ของ ${p.name} ${fmtN(days)} วันแล้ว`);
+      S.draft={...d, note:"", docNo:"", daysOverride:"", emergency:false}; render(); }
+    catch(e){}
+  }
+  else if(f.id==="staffForm"){
+    captureStaffForm(); const e=S.editStaff;
+    if(!e.name.trim()){ toast("กรอกชื่อ-สกุล"); return; }
+    const cid=(e.cid||"").replace(/\D/g,"");
+    if(!e.id && cid.length!==13){ toast("กรอกเลขบัตรประชาชน 13 หลัก เพื่อใช้เป็นรหัสผ่านเริ่มต้น"); document.getElementById("s_cid")?.focus(); return; }
+    if(e.id && cid && cid.length!==13){ toast("เลขบัตรประชาชนต้องมี 13 หลัก"); return; }
+    try{
+      await call("saveStaff", {id:e.id, name:e.name.trim(), position:e.position.trim(), level:e.level||"", group:e.group.trim(), section:e.section.trim(), ptype:e.ptype, role:e.role, cid});
+      toast(e.id?"บันทึกข้อมูลบุคลากรแล้ว":"เพิ่มบุคลากรแล้ว"); S.editStaff=null; render();
+    }catch(err){}
+  }
+  else if(f.id==="loginForm"){
+    const u=document.getElementById("lg_user").value.trim(), pw=document.getElementById("lg_pw").value;
+    if(!u||!pw) return;
+    S.busy=true; render();
+    try{
+      const r = await gas("login", [u, pw]);
+      S.token=r.token; saveToken(r.token); applyData(r.data); S.view="summary";
+      if(r.mustChange) S.pwModal={first:true};
+      S.busy=false; render(); toast("ยินดีต้อนรับ "+(S.me?.name||""));
+    }catch(e){ S.busy=false; render(); toast(String(e.message||e).replace(/^Error:\s*/,"")); document.getElementById("lg_pw")?.focus(); }
+  }
+  else if(f.id==="pwForm"){
+    const o=document.getElementById("p_old").value, n1=document.getElementById("p_new").value, n2=document.getElementById("p_new2").value;
+    if(n1!==n2){ toast("รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน"); return; }
+    try{ await call("changePassword", o, n1); S.pwModal=null; render(); toast("เปลี่ยนรหัสผ่านแล้ว"); }catch(e){}
+  }
+  else if(f.id==="resetForm"){
+    const cid=document.getElementById("r_cid").value.replace(/\D/g,"");
+    if(cid.length!==13){ toast("เลขบัตรประชาชนต้องมี 13 หลัก"); return; }
+    const nm=S.staff.get(S.resetFor)?.name||"";
+    try{ await call("resetPassword", S.resetFor, cid); S.resetFor=null; render(); toast(`รีเซ็ตรหัสผ่านของ ${nm} แล้ว`); }catch(e){}
+  }
+  else if(f.id==="holForm"){
+    const d=document.getElementById("h_d").value, n=document.getElementById("h_n").value.trim(); if(!d){ toast("ระบุวันที่วันหยุด"); return; } if(!n){ toast("ระบุชื่อวันหยุด"); return; }
+    S.hd=""; S.hn="";
+    try{ await call("addHoliday", d, n); toast("เพิ่มวันหยุดแล้ว"); }catch(e){}
+  }
+});
+
+async function exportCsv(){
+  const K=[["sick","ลาป่วย"],["personal","ลากิจ"],["vacation","ลาพักผ่อน"]];
+  const rows=[["ปีงบประมาณ","ชื่อ-สกุล","ตำแหน่ง","ระดับ","กลุ่มงาน","งาน","ประเภท",
+    ...K.flatMap(([,l])=>[`${l}:สิทธิ์ประจำปี`,`${l}:สะสมยกมา`,`${l}:รวมสิทธิ์`,`${l}:ลาปีนี้(ครั้ง)`,`${l}:ลาปีนี้(วัน)`,`${l}:คงเหลือ`,`${l}:ลาสะสมทุกปี(วัน)`]),"ลากิจฉุกเฉินปีนี้(ครั้ง)"]];
+  for(const p of staffList()){ const b=balances(p,S.fy);
+    rows.push([S.fy,p.name,p.position||"",p.level||"",groupOf(p),p.section||"",typeCfg(p).label,
+      ...K.flatMap(([k])=>[b[k].annual,b[k].carry,b[k].quota,b[k].count,b[k].used,b[k].left,b[k].cum]),b.personal.emergency]); }
+  try{ const r = await call("exportSheet", `สรุปวันลา ปีงบ ${S.fy}`, rows);
+    toast(`ส่งออกแล้ว: ชีต "${r.sheet}" ในไฟล์ Google Sheets ของระบบ`); }catch(e){}
+}
+
+// ---------- boot ----------
+(async function boot(){
+  let t=null; try{ t=sessionStorage.getItem("leave.token"); }catch(e){}
+  if(t){
+    S.token=t; $app.innerHTML=`<div class="panel empty"><h3>กำลังโหลดข้อมูล…</h3></div>`;
+    try{ const r=await gas("bootstrap",[t]); applyData(r.data); }catch(e){ S.token=null; saveToken(null); }
+  }
+  render();
+})();
+})();
+</script>
+
+</body>
+</html>
