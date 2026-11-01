@@ -84,14 +84,14 @@ function menuImportCids() {
   var ui = SpreadsheetApp.getUi();
   var p = ui.prompt('นำเข้าเลขบัตรประชาชน',
     'วางลิงก์ Google Sheet ที่มีชื่อ-สกุลและเลขบัตรประชาชน\n(เว้นว่าง = ไฟล์ "รายชื่อบุคลากร 39 คน")\n\n' +
-    'จะตั้งรหัสผ่านเริ่มต้นเฉพาะคนที่ยังไม่มีรหัสผ่าน คนที่มีรหัสผ่านแล้วจะไม่ถูกเปลี่ยน', ui.ButtonSet.OK_CANCEL);
+    'รหัสผ่านเริ่มต้นจะเป็นเลขบัตรประชาชนตามไฟล์ ยกเว้นคนที่ตั้งรหัสผ่านเองแล้วจะไม่ถูกเปลี่ยน', ui.ButtonSet.OK_CANCEL);
   if (p.getSelectedButton() !== ui.Button.OK) return;
   var t = String(p.getResponseText() || '').trim();
   var m = t.match(/\/d\/([A-Za-z0-9_-]+)/);
   var src = SpreadsheetApp.openById(m ? m[1] : (t || CID_SOURCE_ID));
   var r = withLock_(function () { return importCids_(src.getSheets().map(function (s) { return s.getDataRange().getValues(); })); });
   var msg = 'ตั้งรหัสผ่านเริ่มต้น (เลขบัตร) แล้ว ' + r.done + ' คน\n' +
-    'มีรหัสผ่านอยู่แล้ว (ไม่เปลี่ยน) ' + r.hasPw + ' คน';
+    'ตั้งรหัสผ่านเองแล้ว (ไม่เปลี่ยน) ' + r.hasPw + ' คน';
   if (r.bad.length) msg += '\n\nเลขบัตรไม่ถูกต้อง ' + r.bad.length + ' คน:\n• ' + r.bad.join('\n• ');
   if (r.noCid.length) msg += '\n\nไม่พบชื่อ/เลขบัตรในไฟล์ ' + r.noCid.length + ' คน:\n• ' + r.noCid.join('\n• ');
   if (r.unknown.length) msg += '\n\nชื่อในไฟล์ที่ไม่มีในระบบ ' + r.unknown.length + ' คน:\n• ' + r.unknown.join('\n• ');
@@ -119,7 +119,7 @@ function importCids_(tables) {
   staff.forEach(function (s) {
     var key = normName_(s.name), f = found[key];
     if (f) used[key] = true;
-    if (s.hash) { r.hasPw++; return; }
+    if (s.hash && !s.mustChange) { r.hasPw++; return; } // ตั้งรหัสผ่านเองแล้ว ไม่เปลี่ยน
     if (!f) { r.noCid.push(s.name); return; }
     if (!validCid_(f.cid)) { r.bad.push(s.name); return; }
     var salt = Utilities.getUuid();

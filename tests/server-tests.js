@@ -145,7 +145,9 @@ window.runServerTests = function () {
     n.prompts.push('นายผู้ดูแล ระบบ', GasMock.cid('110170012345'));
     B.setupSystem();
     const st = n.ss.getSheetByName('บุคลากร');
-    st.appendRow(['s1', 'นางสาวกนกพร ใจดี', '', '', '', '', 'gov', 'บุคลากร', '', '', '', '', '']);
+    const hl = B.login('ผู้ดูแล ระบบ', GasMock.cid('110170012345'));
+    B.changePassword(hl.token, GasMock.cid('110170012345'), 'hrOwnPass1'); // HR ตั้งรหัสเองแล้ว → ห้ามเปลี่ยน
+    st.appendRow(['s1', 'นางสาวกนกพร ใจดี', '', '', '', '', 'gov', 'บุคลากร', '', 'oldsalt', 'oldhash', true, '']); // ยังใช้รหัสเริ่มต้น → ตั้งใหม่
     st.appendRow(['s2', 'นายสมชาย  รักงาน', '', '', '', '', 'gov', 'บุคลากร', '', '', '', '', '']);
     st.appendRow(['s3', 'นางมาลี ไม่มีบัตร', '', '', '', '', 'gov', 'บุคลากร', '', '', '', '', '']);
     st.appendRow(['s4', 'นายเลข ผิด', '', '', '', '', 'gov', 'บุคลากร', '', '', '', '', '']);
@@ -157,12 +159,13 @@ window.runServerTests = function () {
       [5, 'นาย', 'ผู้ดูแล', 'ระบบ', GasMock.cid('310010000004')]];
     const r = B.importCids_([[['อื่น']], src]);
     ok('importCids done count', r.done === 2, r);
-    ok('importCids skips existing password (HR)', r.hasPw === 1 && st._s.rows[1][10] === hrHashBefore, r);
+    ok('importCids skips self-set password (HR)', r.hasPw === 1 && st._s.rows[1][10] === hrHashBefore && !!B.login('ผู้ดูแล ระบบ', 'hrOwnPass1').token, r);
+    ok('importCids replaces default password', st._s.rows.find(x => x[0] === 's1')[10] !== 'oldhash');
     ok('importCids reports invalid / missing / unknown', r.bad.join() === 'นายเลข ผิด' && r.noCid.join() === 'นางมาลี ไม่มีบัตร' && r.unknown.join() === 'นายคนนอก ระบบ', r);
     ok('importCids stores no plain ID', !JSON.stringify(st._s.rows).includes(c1) && !JSON.stringify(st._s.rows).includes(c2));
     ok('imported ID logs in', !!B.login('กนกพร ใจดี', c1).token && !!B.login('สมชาย รักงาน', c2).token);
     const full = B.importCids_([[['ชื่อ-สกุล', 'เลขบัตร'], ['นางมาลี ไม่มีบัตร', GasMock.cid('310010000005')]]]);
-    ok('importCids full-name column', full.done === 1 && full.hasPw === 3 && full.noCid.join() === 'นายเลข ผิด', full);
+    ok('importCids full-name column', full.done === 1 && full.hasPw === 1 && full.noCid.length === 3, full);
   } catch (e) { out.push('CRASH3 ' + e.stack); }
   return out;
 };
