@@ -8,7 +8,7 @@
   const HR_CID = cid('110170012345'), ST_CID = cid('320050011111');
   m.prompts.push('นายทดสอบ ผู้ดูแล', HR_CID); A.setupSystem();
   const T0 = A.login('ทดสอบ ผู้ดูแล', HR_CID).token;
-  A.saveStaff(T0, { name: 'นางสาวบานเย็น แสงแก้ว', level: 'ชำนาญการ', group: 'กลุ่มงานยุทธศาสตร์และแผนงาน', section: 'งาน Digital Health & Data', ptype: 'ข้าราชการ', cid: ST_CID });
+  A.saveStaff(T0, { name: 'นางสาวบานเย็น แสงแก้ว', level: 'ชำนาญการ', group: 'กลุ่มงานยุทธศาสตร์และสารสนเทศ+สุขภาพดิจิทัล', section: 'งานสุขภาพดิจิทัล', ptype: 'ข้าราชการ', cid: ST_CID });
   A.saveStaff(T0, { name: 'นายกิตติ ก้อนแก้ว', group: 'กลุ่มงานอำนวยการ', section: 'งานที่ไม่อยู่ในรายการ', ptype: 'พนักงานกระทรวง', cid: cid('320050044444') });
   m.cache.clear();
   const hasDate = o => { let b = false; (function w(x) { if (x instanceof Date) b = true; else if (x && typeof x === 'object') for (const k in x) w(x[k]); })(o); return b; };
@@ -88,7 +88,7 @@
       ok('section preserved after edit', staffRow('นายกิตติ ก้อนแก้ว')[5] === 'งานที่ไม่อยู่ในรายการ', staffRow('นายกิตติ ก้อนแก้ว')[5]);
       const bRow = staffRow('นางสาวบานเย็น แสงแก้ว');
       await click(`[data-act="edit-staff"][data-id="${bRow[0]}"]`);
-      ok('ORG group/section preselected', $('#s_group').value === 'กลุ่มงานยุทธศาสตร์และแผนงาน' && $('#s_section').value === 'งาน Digital Health & Data', $('#s_group').value + '|' + $('#s_section').value);
+      ok('ORG group/section preselected', $('#s_group').value === 'กลุ่มงานยุทธศาสตร์และสารสนเทศ+สุขภาพดิจิทัล' && $('#s_section').value === 'งานสุขภาพดิจิทัล', $('#s_group').value + '|' + $('#s_section').value);
       await click('[data-act="cancel-staff"]');
 
       // person view + delete a leave
