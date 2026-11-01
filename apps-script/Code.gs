@@ -90,44 +90,72 @@ function menuImportCids() {
   var m = t.match(/\/d\/([A-Za-z0-9_-]+)/);
   var src = SpreadsheetApp.openById(m ? m[1] : (t || CID_SOURCE_ID));
   var r = withLock_(function () { return importCids_(src.getSheets().map(function (s) { return s.getDataRange().getValues(); })); });
-  var msg = 'ตั้งรหัสผ่านเริ่มต้น (เลขบัตร) แล้ว ' + r.done + ' คน\n' +
+  if (!r.rows) {
+    ui.alert('ไม่พบเลขบัตรประชาชน (ตัวเลข 13 หลัก) ในไฟล์ "' + src.getName() + '"\n\n' +
+      'ตรวจสอบว่าเลือกไฟล์ถูก และมีคอลัมน์เลขบัตรประชาชนครบ 13 หลัก\nยังไม่มีการเปลี่ยนแปลงรหัสผ่านใด ๆ');
+    return;
+  }
+  var msg = 'ไฟล์: ' + src.getName() + ' (พบเลข 13 หลัก ' + r.rows + ' แถว)\n\n' +
+    'ตั้งรหัสผ่านเริ่มต้น (เลขบัตร) แล้ว ' + r.done + ' คน\n' +
     'ตั้งรหัสผ่านเองแล้ว (ไม่เปลี่ยน) ' + r.hasPw + ' คน';
   if (r.bad.length) msg += '\n\nเลขบัตรไม่ถูกต้อง ' + r.bad.length + ' คน:\n• ' + r.bad.join('\n• ');
+  if (r.dup.length) msg += '\n\nพบชื่อซ้ำหลายแถวในไฟล์ (ไม่ได้ตั้ง) ' + r.dup.length + ' คน:\n• ' + r.dup.join('\n• ');
   if (r.noCid.length) msg += '\n\nไม่พบชื่อ/เลขบัตรในไฟล์ ' + r.noCid.length + ' คน:\n• ' + r.noCid.join('\n• ');
   if (r.unknown.length) msg += '\n\nชื่อในไฟล์ที่ไม่มีในระบบ ' + r.unknown.length + ' คน:\n• ' + r.unknown.join('\n• ');
   ui.alert(msg);
 }
 
-// tables = ค่าของแต่ละแท็บในไฟล์ต้นทาง; หาแถวหัวตารางที่มีคอลัมน์ชื่อและคอลัมน์เลขบัตรเอง
+// tables = ค่าของแต่ละแท็บในไฟล์ต้นทาง
+// 1) ถ้ามีหัวตาราง (ชื่อ / เลขบัตร) จับคู่ชื่อแบบตรงตัว
+// 2) ไม่ว่าหัวตารางจะเขียนอย่างไร: หาแถวที่มีตัวเลข 13 หลัก แล้วจับคู่ชื่อบุคลากรที่ปรากฏในข้อความแถวนั้น
 function importCids_(tables) {
-  var found = {}, order = [];
+  var found = {}, rows = [];
   tables.forEach(function (v) {
     var h = -1, c = null;
     for (var i = 0; i < Math.min(v.length, 10) && h < 0; i++) { c = cidCols_(v[i]); if (c) h = i; }
-    if (h < 0) return;
-    for (var j = h + 1; j < v.length; j++) {
-      var col = function (k) { return k >= 0 ? String(v[j][k]).trim() : ''; };
-      var name = c.full >= 0 ? col(c.full) : (col(c.pre) + col(c.first) + ' ' + col(c.last));
-      var key = normName_(name), cid = digits_(v[j][c.cid]);
-      if (!key || !cid) continue;
-      if (!(key in found)) order.push(name.replace(/\s+/g, ' ').trim());
-      found[key] = { cid: cid, name: name };
+    for (var j = 0; j < v.length; j++) {
+      var row = v[j], ci = -1;
+      if (c && j > h) ci = c.cid;
+      if (ci < 0 || digits_(row[ci]).length !== 13) {
+        ci = -1;
+        for (var k = 0; k < row.length && ci < 0; k++) if (digits_(row[k]).length === 13) ci = k;
+      }
+      if (ci < 0) continue;
+      var cid = digits_(row[ci]);
+      var text = row.filter(function (_, k) { return k !== ci; }).map(String).join(' ');
+      var label = text.replace(/\s+/g, ' ').trim();
+      if (c && j > h) {
+        var col = function (k) { return k >= 0 ? String(row[k]).trim() : ''; };
+        label = c.full >= 0 ? col(c.full) : (col(c.pre) + col(c.first) + ' ' + col(c.last));
+        var key = normName_(label);
+        if (key) found[key] = cid;
+      }
+      rows.push({ cid: cid, text: squash_(text), label: label.slice(0, 60), used: false });
     }
   });
-  var sh = sheet_(SH.STAFF), staff = staffRows_(), used = {};
-  var r = { done: 0, hasPw: 0, bad: [], noCid: [], unknown: [] };
+  var sh = sheet_(SH.STAFF), staff = staffRows_();
+  var r = { done: 0, hasPw: 0, bad: [], noCid: [], dup: [], unknown: [], rows: rows.length };
   staff.forEach(function (s) {
-    var key = normName_(s.name), f = found[key];
-    if (f) used[key] = true;
+    var key = normName_(s.name), cid = found[key];
+    var hits = rows.filter(function (x) { return x.cid === cid || (key.length >= 4 && x.text.indexOf(key) >= 0); });
+    hits.forEach(function (x) { x.used = true; });
     if (s.hash && !s.mustChange) { r.hasPw++; return; } // ตั้งรหัสผ่านเองแล้ว ไม่เปลี่ยน
-    if (!f) { r.noCid.push(s.name); return; }
-    if (!validCid_(f.cid)) { r.bad.push(s.name); return; }
+    if (!cid) {
+      var ids = hits.map(function (x) { return x.cid; }).filter(function (x, i, a) { return a.indexOf(x) === i; });
+      if (ids.length > 1) { r.dup.push(s.name); return; }
+      cid = ids[0];
+    }
+    if (!cid) { r.noCid.push(s.name); return; }
+    if (!validCid_(cid)) { r.bad.push(s.name); return; }
     var salt = Utilities.getUuid();
-    sh.getRange(s.row, 9, 1, 4).setValues([['', salt, hash_(salt, f.cid), true]]);
+    sh.getRange(s.row, 9, 1, 4).setValues([['', salt, hash_(salt, cid), true]]);
     r.done++;
   });
-  order.forEach(function (n) { if (!used[normName_(n)]) r.unknown.push(n); });
+  rows.forEach(function (x) { if (!x.used) r.unknown.push(x.label || '(ไม่มีชื่อ)'); });
   return r;
+}
+function squash_(s) {
+  return String(s || '').normalize('NFKC').replace(/[​-‍﻿]/g, '').replace(/\s+/g, '').toLowerCase();
 }
 function cidCols_(row) {
   var c = { full: -1, pre: -1, first: -1, last: -1, cid: -1 };

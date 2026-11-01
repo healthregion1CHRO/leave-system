@@ -166,6 +166,18 @@ window.runServerTests = function () {
     ok('imported ID logs in', !!B.login('กนกพร ใจดี', c1).token && !!B.login('สมชาย รักงาน', c2).token);
     const full = B.importCids_([[['ชื่อ-สกุล', 'เลขบัตร'], ['นางมาลี ไม่มีบัตร', GasMock.cid('310010000005')]]]);
     ok('importCids full-name column', full.done === 1 && full.hasPw === 1 && full.noCid.length === 3, full);
+    // หัวตารางไม่ตรงรูปแบบ + เลขบัตรมีขีด → ใช้การหาเลข 13 หลักและชื่อในแถว
+    const c6 = GasMock.cid('310010000006'), c7 = GasMock.cid('310010000007');
+    st.appendRow(['s6', 'นางสาวศิริ  พรมมา', '', '', '', '', 'gov', 'บุคลากร', '', 'x', 'y', true, '']);
+    st.appendRow(['s7', 'นายวิทย์ ใจกล้า', '', '', '', '', 'gov', 'บุคลากร', '', 'x', 'y', true, '']);
+    const odd = B.importCids_([[['ที่', 'รายชื่อผู้รับ', 'ตำแหน่ง', 'เลขประจำตัว 13 หลัก'],
+      [1, 'น.ส. ศิริ พรมมา', 'นักวิชาการ', c6.replace(/^(\d)(\d{4})(\d{5})(\d{2})(\d)$/, '$1-$2-$3-$4-$5')],
+      [2, 'นายวิทย์ ใจกล้า', 'นิติกร', Number(c7)]]]);
+    ok('importCids fallback without known headers', odd.rows === 2 && odd.done === 2 && odd.unknown.length === 0 && !!B.login('ศิริ พรมมา', c6).token && !!B.login('วิทย์ ใจกล้า', c7).token, odd);
+    const none = B.importCids_([[['ชื่อ', 'หมายเหตุ'], ['นายวิทย์ ใจกล้า', 'ไม่มีเลข']]]);
+    ok('importCids reports zero ID rows', none.rows === 0 && none.done === 0, none);
+    const dup = B.importCids_([[['x'], ['วิทย์ ใจกล้า', GasMock.cid('310010000008')], ['วิทย์ ใจกล้า', GasMock.cid('310010000009')]]]);
+    ok('importCids ambiguous name not set', dup.dup.includes('นายวิทย์ ใจกล้า'), dup);
   } catch (e) { out.push('CRASH3 ' + e.stack); }
   return out;
 };
