@@ -138,5 +138,31 @@ window.runServerTests = function () {
     ok('delete then changePassword hits right row', !!A.login('สามารถ เมืองไชย', 'newpass99').token && !!A.login('ทดสอบ ผู้ดูแล', GasMock.cid('110170012345')).token && hrRow[11] !== false);
     ok('deleteStaff removed leaves too', !A.bootstrap(T).data.leaves.some(l => l.staffId === mani.id));
   } catch (e) { out.push('CRASH2 ' + e.stack); }
+
+  // นำเข้าเลขบัตรจากไฟล์รายชื่อ (เมนู 3)
+  try {
+    const n = GasMock.loadServer(window.CODE_GS), B = n.api;
+    n.prompts.push('นายผู้ดูแล ระบบ', GasMock.cid('110170012345'));
+    B.setupSystem();
+    const st = n.ss.getSheetByName('บุคลากร');
+    st.appendRow(['s1', 'นางสาวกนกพร ใจดี', '', '', '', '', 'gov', 'บุคลากร', '', '', '', '', '']);
+    st.appendRow(['s2', 'นายสมชาย  รักงาน', '', '', '', '', 'gov', 'บุคลากร', '', '', '', '', '']);
+    st.appendRow(['s3', 'นางมาลี ไม่มีบัตร', '', '', '', '', 'gov', 'บุคลากร', '', '', '', '', '']);
+    st.appendRow(['s4', 'นายเลข ผิด', '', '', '', '', 'gov', 'บุคลากร', '', '', '', '', '']);
+    const hrHashBefore = st._s.rows[1][10];
+    const c1 = GasMock.cid('310010000001'), c2 = GasMock.cid('310010000002');
+    const src = [['รายชื่อบุคลากร'], ['ลำดับ', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'เลขบัตรประชาชน'],
+      [1, 'นางสาว', 'กนกพร', 'ใจดี', c1], [2, 'นาย', 'สมชาย', 'รักงาน', Number(c2)],
+      [3, 'นาย', 'เลข', 'ผิด', '1234567890123'], [4, 'นาย', 'คนนอก', 'ระบบ', GasMock.cid('310010000003')],
+      [5, 'นาย', 'ผู้ดูแล', 'ระบบ', GasMock.cid('310010000004')]];
+    const r = B.importCids_([[['อื่น']], src]);
+    ok('importCids done count', r.done === 2, r);
+    ok('importCids skips existing password (HR)', r.hasPw === 1 && st._s.rows[1][10] === hrHashBefore, r);
+    ok('importCids reports invalid / missing / unknown', r.bad.join() === 'นายเลข ผิด' && r.noCid.join() === 'นางมาลี ไม่มีบัตร' && r.unknown.join() === 'นายคนนอก ระบบ', r);
+    ok('importCids stores no plain ID', !JSON.stringify(st._s.rows).includes(c1) && !JSON.stringify(st._s.rows).includes(c2));
+    ok('imported ID logs in', !!B.login('กนกพร ใจดี', c1).token && !!B.login('สมชาย รักงาน', c2).token);
+    const full = B.importCids_([[['ชื่อ-สกุล', 'เลขบัตร'], ['นางมาลี ไม่มีบัตร', GasMock.cid('310010000005')]]]);
+    ok('importCids full-name column', full.done === 1 && full.hasPw === 3 && full.noCid.join() === 'นายเลข ผิด', full);
+  } catch (e) { out.push('CRASH3 ' + e.stack); }
   return out;
 };

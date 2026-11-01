@@ -37,6 +37,7 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('ระบบวันลา')
     .addItem('1) ตั้งค่าเริ่มต้นระบบ (ทำครั้งแรกครั้งเดียว)', 'setupSystem')
     .addItem('2) เข้ารหัสเลขบัตรที่กรอกในชีตบุคลากร', 'menuHashPending')
+    .addItem('3) นำเข้าเลขบัตรจากไฟล์รายชื่อบุคลากร', 'menuImportCids')
     .addSeparator()
     .addItem('ดูลิงก์เข้าใช้งานระบบ', 'menuShowUrl')
     .addToUi();
@@ -74,6 +75,74 @@ function setupSystem() {
 function menuHashPending() {
   var n = withLock_(hashPending_);
   SpreadsheetApp.getUi().alert(n ? ('เข้ารหัสเลขบัตรแล้ว ' + n + ' คน และลบเลขบัตรออกจากชีตแล้ว') : 'ไม่มีเลขบัตรที่รอเข้ารหัส');
+}
+
+// ไฟล์ "รายชื่อบุคลากร 39 คน (สำหรับนำเข้าระบบวันลา)" — เลขบัตรอ่านตรงจากไฟล์ ไม่ผ่านคนกลาง และไม่เก็บตัวเลขจริง
+var CID_SOURCE_ID = '1exDRZW-j2zEnAFpQY2NRwFrKAdTjFh4T_Bm3OELkzd4';
+
+function menuImportCids() {
+  var ui = SpreadsheetApp.getUi();
+  var p = ui.prompt('นำเข้าเลขบัตรประชาชน',
+    'วางลิงก์ Google Sheet ที่มีชื่อ-สกุลและเลขบัตรประชาชน\n(เว้นว่าง = ไฟล์ "รายชื่อบุคลากร 39 คน")\n\n' +
+    'จะตั้งรหัสผ่านเริ่มต้นเฉพาะคนที่ยังไม่มีรหัสผ่าน คนที่มีรหัสผ่านแล้วจะไม่ถูกเปลี่ยน', ui.ButtonSet.OK_CANCEL);
+  if (p.getSelectedButton() !== ui.Button.OK) return;
+  var t = String(p.getResponseText() || '').trim();
+  var m = t.match(/\/d\/([A-Za-z0-9_-]+)/);
+  var src = SpreadsheetApp.openById(m ? m[1] : (t || CID_SOURCE_ID));
+  var r = withLock_(function () { return importCids_(src.getSheets().map(function (s) { return s.getDataRange().getValues(); })); });
+  var msg = 'ตั้งรหัสผ่านเริ่มต้น (เลขบัตร) แล้ว ' + r.done + ' คน\n' +
+    'มีรหัสผ่านอยู่แล้ว (ไม่เปลี่ยน) ' + r.hasPw + ' คน';
+  if (r.bad.length) msg += '\n\nเลขบัตรไม่ถูกต้อง ' + r.bad.length + ' คน:\n• ' + r.bad.join('\n• ');
+  if (r.noCid.length) msg += '\n\nไม่พบชื่อ/เลขบัตรในไฟล์ ' + r.noCid.length + ' คน:\n• ' + r.noCid.join('\n• ');
+  if (r.unknown.length) msg += '\n\nชื่อในไฟล์ที่ไม่มีในระบบ ' + r.unknown.length + ' คน:\n• ' + r.unknown.join('\n• ');
+  ui.alert(msg);
+}
+
+// tables = ค่าของแต่ละแท็บในไฟล์ต้นทาง; หาแถวหัวตารางที่มีคอลัมน์ชื่อและคอลัมน์เลขบัตรเอง
+function importCids_(tables) {
+  var found = {}, order = [];
+  tables.forEach(function (v) {
+    var h = -1, c = null;
+    for (var i = 0; i < Math.min(v.length, 10) && h < 0; i++) { c = cidCols_(v[i]); if (c) h = i; }
+    if (h < 0) return;
+    for (var j = h + 1; j < v.length; j++) {
+      var col = function (k) { return k >= 0 ? String(v[j][k]).trim() : ''; };
+      var name = c.full >= 0 ? col(c.full) : (col(c.pre) + col(c.first) + ' ' + col(c.last));
+      var key = normName_(name), cid = digits_(v[j][c.cid]);
+      if (!key || !cid) continue;
+      if (!(key in found)) order.push(name.replace(/\s+/g, ' ').trim());
+      found[key] = { cid: cid, name: name };
+    }
+  });
+  var sh = sheet_(SH.STAFF), staff = staffRows_(), used = {};
+  var r = { done: 0, hasPw: 0, bad: [], noCid: [], unknown: [] };
+  staff.forEach(function (s) {
+    var key = normName_(s.name), f = found[key];
+    if (f) used[key] = true;
+    if (s.hash) { r.hasPw++; return; }
+    if (!f) { r.noCid.push(s.name); return; }
+    if (!validCid_(f.cid)) { r.bad.push(s.name); return; }
+    var salt = Utilities.getUuid();
+    sh.getRange(s.row, 9, 1, 4).setValues([['', salt, hash_(salt, f.cid), true]]);
+    r.done++;
+  });
+  order.forEach(function (n) { if (!used[normName_(n)]) r.unknown.push(n); });
+  return r;
+}
+function cidCols_(row) {
+  var c = { full: -1, pre: -1, first: -1, last: -1, cid: -1 };
+  row.forEach(function (x, i) {
+    var t = String(x).replace(/\s+/g, '');
+    if (!t) return;
+    if (/บัตร|ประชาชน|^cid$|^pid$/i.test(t)) { if (c.cid < 0) c.cid = i; }
+    else if (/^(ชื่อ-?(นาม)?สกุล|ชื่อและ(นาม)?สกุล|ชื่อ\/สกุล)$/.test(t)) { if (c.full < 0) c.full = i; }
+    else if (/^คำนำหน้า/.test(t)) c.pre = i;
+    else if (/^(นาม)?สกุล$/.test(t)) c.last = i;
+    else if (/^ชื่อ$/.test(t)) c.first = i;
+  });
+  if (c.cid < 0) return null;
+  if (c.full < 0 && c.first < 0) return null;
+  return c;
 }
 
 function menuShowUrl() {
