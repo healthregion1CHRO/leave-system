@@ -211,17 +211,21 @@ window.runServerTests = function () {
       { deploymentId: 'HEAD', deploymentConfig: { scriptId: 'SCRIPT1' }, entryPoints: [{ entryPointType: 'WEB_APP' }] },
       { deploymentId: 'D1', deploymentConfig: { scriptId: 'SCRIPT1', versionNumber: 3 }, entryPoints: [{ entryPointType: 'WEB_APP' }] },
       { deploymentId: 'D2', deploymentConfig: { scriptId: 'SCRIPT1', versionNumber: 2 }, entryPoints: [{ entryPointType: 'WEB_APP' }] }];
-    let ghCode = 200;
+    let ghCode = 200; const rawRefs = [];
     u.fetchHook.fn = (url, o) => {
       const method = (o.method || 'get').toLowerCase();
       calls.push(method + ' ' + url);
       if (url.startsWith('https://api.github.com/')) {
-        if (o.headers.Authorization !== 'Bearer TOKEN') return { code: 401, body: '' };
-        if (ghCode !== 200) return { code: ghCode, body: '' };
-        if (/commits\/main$/.test(url)) return { code: 200, body: sha };
-        if (/Code\.gs\?ref=/.test(url)) return { code: 200, body: codeSrc };
-        if (/Index\.html\?ref=/.test(url)) return { code: 200, body: '<p>ใหม่</p>' };
-        if (/appsscript\.json\?ref=/.test(url)) return { code: 200, body: manifest };
+        if (o.headers.Authorization && o.headers.Authorization !== 'Bearer TOKEN') return { code: 401, body: '' };
+        if (ghCode !== 200) return { code: ghCode, body: '{"message":"API rate limit exceeded"}' };
+        if (/commits\/main$/.test(url) && o.headers.Accept === 'application/vnd.github.sha') return { code: 200, body: sha + '\n' };
+      }
+      const raw = url.match(/^https:\/\/raw\.githubusercontent\.com\/healthregion1CHRO\/leave-system\/(\w+)\/apps-script\/(.+)$/);
+      if (raw) {
+        rawRefs.push(raw[1]);
+        if (raw[2] === 'Code.gs') return { code: 200, body: codeSrc };
+        if (raw[2] === 'Index.html') return { code: 200, body: '<p>ใหม่</p>' };
+        if (raw[2] === 'appsscript.json') return { code: 200, body: manifest };
       }
       const p = url.replace('https://script.googleapis.com/v1/projects/', '');
       if (o.headers.Authorization !== 'Bearer OAUTH') return { code: 401, body: '{}' };
@@ -233,14 +237,11 @@ window.runServerTests = function () {
       if (method === 'put' && dm) { deployments.find(d => d.deploymentId === dm[1]).deploymentConfig = JSON.parse(o.payload).deploymentConfig; return { code: 200, body: '{}' }; }
       return { code: 404, body: '{"error":{"message":"nope"}}' };
     };
-    let r = U.autoUpdate_(false);
-    ok('autoUpdate needs token', /token/.test(r.error || ''), r);
-    u.props.set('GH_TOKEN', 'TOKEN');
-    r = U.autoUpdate_(false);
-    ok('autoUpdate deploys new version', r.updated && r.version === 4 && r.deployments === 2, r);
+    let r = U.autoUpdate_(false); // ไม่มี token (repo public)
+    ok('autoUpdate deploys new version without token', r.updated && r.version === 4 && r.deployments === 2 && /a{7}/.test(r.label), r);
     ok('autoUpdate replaces 3 files, keeps others', projectFiles.length === 4 && projectFiles.find(f => f.name === 'Index').source === '<p>ใหม่</p>' && projectFiles.find(f => f.name === 'Extra').source === 'keep me' && projectFiles.find(f => f.name === 'Code').source === codeSrc, projectFiles.map(f => f.name));
     ok('autoUpdate skips HEAD, updates D1+D2', !deployments[0].deploymentConfig.versionNumber && deployments[1].deploymentConfig.versionNumber === 4 && deployments[2].deploymentConfig.versionNumber === 4 && deployments[1].deploymentConfig.manifestFileName === 'appsscript');
-    ok('autoUpdate fetches files at that commit', calls.some(c => c.includes('Code.gs?ref=' + SHA1)));
+    ok('autoUpdate fetches files pinned to that commit', rawRefs.length === 3 && rawRefs.every(x => x === SHA1), rawRefs);
     calls.length = 0;
     r = U.autoUpdate_(false);
     ok('autoUpdate no-op on same commit', r.updated === false && calls.length === 1, calls);
@@ -250,12 +251,25 @@ window.runServerTests = function () {
     codeSrc = 'function autoUpdateTick(){} // v2'; manifest = '{}';
     r = U.autoUpdate_(false);
     ok('autoUpdate refuses manifest without scopes', /appsscript\.json/.test(r.error || '') && ver === 4, r);
-    manifest = '{"oauthScopes":["x/auth/script.projects","x/auth/script.deployments"]}'; ghCode = 401;
+    manifest = '{"oauthScopes":["x/auth/script.projects","x/auth/script.deployments"]}';
+    u.props.set('GH_TOKEN', 'BAD');
     r = U.autoUpdate_(false);
     ok('autoUpdate reports bad token, keeps old SHA', /token/.test(r.error || '') && u.props.get('GH_SHA') === SHA1 && /token/.test(u.props.get('GH_ERROR')), r);
-    ghCode = 200;
+    u.props.set('GH_TOKEN', 'TOKEN');
     r = U.autoUpdate_(false);
-    ok('autoUpdate recovers next run', r.updated && r.sha === SHA2 && r.version === 5 && !u.props.get('GH_ERROR'), r);
+    ok('autoUpdate with token, recovers next run', r.updated && u.props.get('GH_SHA') === SHA2 && r.version === 5 && !u.props.get('GH_ERROR'), r);
+    // GitHub API เกินโควตา (ไม่มี token) → อ่านจาก branch, รอเห็นชุดเดิม 2 รอบก่อนอัปเดต
+    u.props.delete('GH_TOKEN'); ghCode = 403; rawRefs.length = 0; codeSrc = 'function autoUpdateTick(){} // v3';
+    r = U.autoUpdate_(false);
+    ok('rate-limited: first sighting waits', r.pending === true && ver === 5 && rawRefs.every(x => x === 'main'), r);
+    r = U.autoUpdate_(false);
+    ok('rate-limited: second sighting updates', r.updated && ver === 6 && /^raw:/.test(u.props.get('GH_SHA')) && !u.props.get('GH_PENDING'), r);
+    r = U.autoUpdate_(false);
+    ok('rate-limited: unchanged → no-op', r.updated === false && ver === 6, r);
+    codeSrc = 'function autoUpdateTick(){} // v4';
+    r = U.autoUpdate_(true);
+    ok('rate-limited: manual update applies at once', r.updated && ver === 7, r);
+    ghCode = 200;
     ok('updater not exposed to web API', !U.apiFn_('autoUpdate_') && !U.apiFn_('menuUpdateNow') && !U.apiFn_('autoUpdateTick'));
   } catch (e) { out.push('CRASH4 ' + e.stack); }
   return out;

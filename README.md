@@ -54,9 +54,11 @@ powershell -ExecutionPolicy Bypass -File tests\run-tests.ps1
 สร้างเวอร์ชันใหม่ และชี้ลิงก์ `/exec` เดิมไปที่เวอร์ชันนั้นเองภายใน ~10 นาที (ไม่ต้องวางโค้ดหรือ Deploy เองอีก)
 
 1. เปิด **Google Apps Script API** ที่ https://script.google.com/home/usersettings (บัญชีเจ้าของสคริปต์)
-2. สร้าง GitHub token ที่ https://github.com/settings/personal-access-tokens/new — Repository access: เฉพาะ `leave-system`, Permissions → Contents: **Read-only**
-3. ใน Apps Script: **การตั้งค่าโปรเจกต์ → ✔ แสดงไฟล์ Manifest "appsscript.json"** แล้ววาง `appsscript.json` และ `Code.gs` จาก repo ทับ → บันทึก
-4. เปิดชีตใหม่ → เมนู **ระบบวันลา → ตั้งค่าอัปเดตอัตโนมัติจาก GitHub** → อนุญาตสิทธิ์ → วาง token → ระบบอัปเดตและ Deploy รอบแรกทันที
+2. ใน Apps Script: **การตั้งค่าโปรเจกต์ → ✔ แสดงไฟล์ Manifest "appsscript.json"** แล้ววาง `appsscript.json` และ `Code.gs` จาก repo ทับ → บันทึก
+3. เปิดชีตใหม่ → เมนู **ระบบวันลา → ตั้งค่าอัปเดตอัตโนมัติจาก GitHub** → อนุญาตสิทธิ์ → กด OK (ช่อง token เว้นว่างได้) → ระบบอัปเดตและ Deploy รอบแรกทันที
+- GitHub token ไม่บังคับเพราะ repo เป็น public (ถ้าเปลี่ยนเป็น private ต้องใส่ token: https://github.com/settings/personal-access-tokens/new — repo `leave-system`, Contents: Read-only)
+- ไม่มี token แล้ว GitHub จำกัดจำนวนครั้ง: ระบบจะอ่านไฟล์จาก branch แทน และรอเห็นโค้ดชุดเดิมสองรอบ (~20 นาที) ก่อนอัปเดต กันได้ไฟล์ต่างรุ่นกัน
+- Apps Script เก็บได้สูงสุด 200 เวอร์ชัน ถ้าครบ ให้ลบเวอร์ชันเก่าที่ **ประวัติโปรเจกต์**
 - อัปเดตทันทีโดยไม่รอ: เมนู **อัปเดตจาก GitHub ตอนนี้**
 - ข้อผิดพลาดล่าสุดเก็บใน Script Properties `GH_ERROR` (ระบบไม่อัปเดตถ้า Code.gs บน GitHub ไม่มีตัวอัปเดต หรือ appsscript.json ขาดสิทธิ์)
 - **เพราะ push ขึ้น main = ขึ้นระบบจริง: รัน `tests\run-tests.ps1` ให้ผ่านทุกครั้งก่อน push** (พัฒนาบน branch `dev` แล้วค่อยรวมเข้า main)

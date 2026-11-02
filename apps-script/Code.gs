@@ -63,12 +63,12 @@ var GH_FILES = [
 function menuSetupAutoUpdate() {
   var ui = SpreadsheetApp.getUi();
   var r = ui.prompt('ตั้งค่าอัปเดตอัตโนมัติจาก GitHub',
-    'วาง GitHub token (Fine-grained, เลือก repo leave-system, สิทธิ์ Contents: Read-only)\nเว้นว่างไว้ = ใช้ token เดิม', ui.ButtonSet.OK_CANCEL);
+    'GitHub token (ไม่บังคับ — repo เป็น public ใช้ได้โดยไม่ต้องมี token)\n' +
+    'ถ้ามี: Fine-grained token, repo leave-system, สิทธิ์ Contents: Read-only\nเว้นว่างแล้วกด OK = ไม่ใช้ token / ใช้ token เดิม', ui.ButtonSet.OK_CANCEL);
   if (r.getSelectedButton() !== ui.Button.OK) return;
   var t = String(r.getResponseText() || '').trim();
   var p = PropertiesService.getScriptProperties();
   if (t) p.setProperty('GH_TOKEN', t);
-  if (!p.getProperty('GH_TOKEN')) { ui.alert('ยังไม่มี GitHub token'); return; }
   ScriptApp.getProjectTriggers().forEach(function (tr) { if (tr.getHandlerFunction() === 'autoUpdateTick') ScriptApp.deleteTrigger(tr); });
   ScriptApp.newTrigger('autoUpdateTick').timeBased().everyMinutes(10).create();
   p.deleteProperty('GH_SHA'); // บังคับอัปเดตรอบแรกทันที
@@ -85,8 +85,9 @@ function autoUpdateTick() { autoUpdate_(false); }
 
 function updateMessage_(r) {
   if (r.error) return 'อัปเดตไม่สำเร็จ: ' + r.error;
-  if (!r.updated) return 'โค้ดเป็นเวอร์ชันล่าสุดแล้ว (commit ' + r.sha.slice(0, 7) + ')';
-  return 'อัปเดตแล้ว: commit ' + r.sha.slice(0, 7) + ' → เวอร์ชัน ' + r.version + ', เว็บแอปที่อัปเดต ' + r.deployments + ' ลิงก์';
+  if (r.pending) return 'พบโค้ดใหม่ จะอัปเดตในรอบถัดไป (ประมาณ 10 นาที)';
+  if (!r.updated) return 'โค้ดเป็นเวอร์ชันล่าสุดแล้ว (' + r.label + ')';
+  return 'อัปเดตแล้ว: ' + r.label + ' → เวอร์ชัน ' + r.version + ', เว็บแอปที่อัปเดต ' + r.deployments + ' ลิงก์';
 }
 
 function autoUpdate_(manual) {
@@ -94,15 +95,15 @@ function autoUpdate_(manual) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) return { error: 'ระบบกำลังทำงานอื่นอยู่ ลองใหม่อีกครั้ง' };
   try {
-    var token = p.getProperty('GH_TOKEN');
-    if (!token) throw new Error('ยังไม่ได้ตั้งค่า GitHub token (เมนู ตั้งค่าอัปเดตอัตโนมัติจาก GitHub)');
-    var sha = String(ghGet_(token, 'commits/' + GH_BRANCH, 'application/vnd.github.sha')).trim();
-    if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error('อ่าน commit จาก GitHub ไม่ได้');
-    if (sha === p.getProperty('GH_SHA')) return { updated: false, sha: sha };
-
-    var fresh = GH_FILES.map(function (f) {
-      return { name: f.name, type: f.type, source: ghGet_(token, 'contents/' + f.path + '?ref=' + sha, 'application/vnd.github.raw') };
-    });
+    var token = p.getProperty('GH_TOKEN') || '';
+    var gh = ghLatest_(token, p.getProperty('GH_SHA'));
+    var label = gh.sha ? 'commit ' + gh.sha.slice(0, 7) : 'โค้ดล่าสุดบน ' + GH_BRANCH;
+    if (gh.key === p.getProperty('GH_SHA')) return { updated: false, label: label };
+    // อ่านไฟล์แบบไม่ระบุ commit (GitHub จำกัดจำนวนครั้ง) แคชของ GitHub อาจยังเป็นไฟล์ต่างรุ่นกันได้ราว 5 นาที
+    // → รอให้เห็นชุดเดิมซ้ำอีกรอบก่อนอัปเดต (ยกเว้นกดอัปเดตเองจากเมนู)
+    if (!gh.sha && !manual && p.getProperty('GH_PENDING') !== gh.key) { p.setProperty('GH_PENDING', gh.key); return { pending: true, label: label }; }
+    var sha = gh.key;
+    var fresh = gh.files;
     // กันโค้ดเสียจนอัปเดตครั้งต่อไปไม่ได้: ต้องยังมีตัวอัปเดตและสิทธิ์ที่จำเป็น
     if (fresh[0].source.indexOf('function autoUpdateTick') < 0) throw new Error('Code.gs บน GitHub ไม่มีตัวอัปเดตอัตโนมัติ จึงไม่อัปเดต');
     if (fresh[2].source.indexOf('auth/script.projects') < 0 || fresh[2].source.indexOf('auth/script.deployments') < 0) throw new Error('appsscript.json บน GitHub ไม่มีสิทธิ์ script.projects/script.deployments จึงไม่อัปเดต');
@@ -112,7 +113,7 @@ function autoUpdate_(manual) {
     var cur = scriptApi_('get', id + '/content').files || [];
     var keep = cur.filter(function (f) { return !GH_FILES.some(function (g) { return g.name === f.name; }); }); // ไฟล์อื่นในโปรเจกต์เก็บไว้
     scriptApi_('put', id + '/content', { files: fresh.concat(keep) });
-    var desc = 'GitHub ' + GH_BRANCH + ' ' + sha.slice(0, 7);
+    var desc = 'GitHub ' + GH_BRANCH + ' ' + (gh.sha ? gh.sha.slice(0, 7) : sha.slice(4, 11));
     var ver = scriptApi_('post', id + '/versions', { description: desc }).versionNumber;
     var n = 0;
     (scriptApi_('get', id + '/deployments').deployments || []).forEach(function (d) {
@@ -126,7 +127,8 @@ function autoUpdate_(manual) {
     p.setProperty('GH_SHA', sha);
     p.setProperty('GH_LAST', JSON.stringify({ at: new Date().toISOString(), sha: sha, version: ver, deployments: n }));
     p.deleteProperty('GH_ERROR');
-    return { updated: true, sha: sha, version: ver, deployments: n };
+    p.deleteProperty('GH_PENDING');
+    return { updated: true, label: label, version: ver, deployments: n };
   } catch (e) {
     var msg = String((e && e.message) || e);
     p.setProperty('GH_ERROR', new Date().toISOString() + ' ' + msg);
@@ -135,13 +137,31 @@ function autoUpdate_(manual) {
   } finally { lock.releaseLock(); }
 }
 
-function ghGet_(token, path, accept) {
-  var r = UrlFetchApp.fetch('https://api.github.com/repos/' + GH_REPO + '/' + path, {
-    headers: { Authorization: 'Bearer ' + token, Accept: accept, 'X-GitHub-Api-Version': '2022-11-28' }, muteHttpExceptions: true });
-  var code = r.getResponseCode();
-  if (code === 401 || code === 403) throw new Error('GitHub token ใช้ไม่ได้หรือหมดอายุ (HTTP ' + code + ')');
-  if (code !== 200) throw new Error('ดึง ' + path + ' จาก GitHub ไม่ได้ (HTTP ' + code + ')');
-  return r.getContentText('UTF-8');
+// คืน { key, sha, files } — key ใช้เทียบว่าเคยอัปเดตชุดนี้แล้วหรือยัง
+function ghLatest_(token, knownKey) {
+  var c = ghFetch_('https://api.github.com/repos/' + GH_REPO + '/commits/' + GH_BRANCH, token, 'application/vnd.github.sha');
+  var sha = c.code === 200 ? c.text.trim() : '';
+  if (c.code === 401) throw new Error('GitHub token ใช้ไม่ได้หรือหมดอายุ (HTTP 401) — ตั้งค่าใหม่ที่เมนู ตั้งค่าอัปเดตอัตโนมัติจาก GitHub');
+  if (!/^[0-9a-f]{40}$/.test(sha)) sha = ''; // เช่น 403/429 เกินโควตา GitHub แบบไม่มี token → อ่านไฟล์จาก branch แทน
+  if (sha && sha === knownKey) return { key: sha, sha: sha, files: null }; // commit เดิม ไม่ต้องโหลดไฟล์
+  var files = GH_FILES.map(function (f) {
+    var url = 'https://raw.githubusercontent.com/' + GH_REPO + '/' + (sha || GH_BRANCH) + '/' + f.path;
+    var r = ghFetch_(url, token, '*/*');
+    if (r.code !== 200) throw new Error('ดึง ' + f.path + ' จาก GitHub ไม่ได้ (HTTP ' + r.code + ')' + (r.code === 404 && !token ? ' — ถ้า repo เป็น private ต้องใส่ GitHub token' : ''));
+    return { name: f.name, type: f.type, source: r.text };
+  });
+  if (sha) return { key: sha, sha: sha, files: files };
+  var d = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, files.map(function (f) { return f.source; }).join('\u0000'), Utilities.Charset.UTF_8)
+    .map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');
+  return { key: 'raw:' + d, sha: '', files: files };
+}
+
+function ghFetch_(url, token, accept) {
+  var h = { Accept: accept };
+  if (token) h.Authorization = 'Bearer ' + token;
+  if (url.indexOf('https://api.github.com/') === 0) h['X-GitHub-Api-Version'] = '2022-11-28';
+  var r = UrlFetchApp.fetch(url, { headers: h, muteHttpExceptions: true });
+  return { code: r.getResponseCode(), text: r.getContentText('UTF-8') };
 }
 
 function scriptApi_(method, path, body) {
@@ -152,6 +172,7 @@ function scriptApi_(method, path, body) {
   if (code !== 200) {
     var m = txt; try { m = JSON.parse(txt).error.message; } catch (e) {}
     if (code === 403) m = 'ยังไม่ได้เปิด Google Apps Script API ที่ https://script.google.com/home/usersettings หรือยังไม่ได้อนุญาตสิทธิ์ (' + m + ')';
+    else if (/versions$/.test(path)) m += ' — ถ้าเวอร์ชันครบ 200 แล้ว ให้ลบเวอร์ชันเก่าใน Apps Script → ประวัติโปรเจกต์';
     throw new Error('Apps Script API ' + method.toUpperCase() + ' ' + path.replace(/^[^/]+/, '') + ' (HTTP ' + code + '): ' + m);
   }
   return txt ? JSON.parse(txt) : {};
