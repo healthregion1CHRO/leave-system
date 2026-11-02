@@ -492,8 +492,7 @@ function doLogout(silent){
 // ---------- rendering ----------
 function fyOptions(){
   const now = fyOf(todayIso()); const set = new Set([now, now-1, now+1, Number(S.config.startFY)||now]);
-  for(const p of S.staff.values()) for(const l of (p.leaves||[])) set.add(l.fy);
-  if(S.myDoc) for(const l of (S.myDoc.leaves||[])) set.add(l.fy);
+  for(const p of S.staff.values()) for(const l of [...(p.leaves||[]), ...(p.cancelled||[])]) set.add(l.fy);
   const list=[...set].filter(Boolean).sort((a,b)=>b-a);
   $fy.innerHTML = list.map(f=>`<option value="${f}" ${f===S.fy?"selected":""}>${f}</option>`).join("");
 }
