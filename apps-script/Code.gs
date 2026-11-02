@@ -15,7 +15,9 @@ var SH = {
 var STAFF_HEAD = ['id', 'ชื่อ-สกุล', 'ตำแหน่ง', 'ระดับ', 'กลุ่มงาน', 'งาน', 'ประเภทบุคลากร', 'บทบาท',
   'เลขบัตรประชาชน (กรอกชั่วคราว)', 'salt', 'hash', 'ควรเปลี่ยนรหัสผ่าน', 'เข้าใช้ล่าสุด'];
 var LEAVE_HEAD = ['id', 'staffId', 'ชื่อ-สกุล', 'ประเภทการลา', 'ฉุกเฉิน', 'ตั้งแต่', 'ถึง', 'ช่วงเวลา',
-  'วันทำการ', 'ปีงบประมาณ', 'หมายเหตุ', 'เลขที่ใบลา', 'บันทึกโดย', 'เวลาบันทึก'];
+  'วันทำการ', 'ปีงบประมาณ', 'หมายเหตุ', 'เลขที่ใบลา', 'บันทึกโดย', 'เวลาบันทึก',
+  'สถานะ', 'เหตุผลการยกเลิก', 'ยกเลิกโดย', 'เวลายกเลิก']; // คอลัมน์ 15–18: ขอยกเลิกวันลา (ว่าง = ปกติ)
+var CANCELLED = 'ยกเลิก';
 var CARRY_HEAD = ['staffId', 'ชื่อ-สกุล', 'ปีงบประมาณ', 'ลาป่วยยกมา', 'ลากิจยกมา', 'ลาพักผ่อนยกมา'];
 var TYPES_HEAD = ['รหัส', 'ประเภทบุคลากร', 'ลาป่วย/ปี', 'ลากิจ/ปี', 'ลาพักผ่อน/ปี', 'ลาพักผ่อนสะสมรวมไม่เกิน'];
 var HOL_HEAD = ['วันที่ (ปปปป-ดด-วว ค.ศ.)', 'ชื่อวันหยุด'];
@@ -47,7 +49,7 @@ function setupSystem() {
   var ui = SpreadsheetApp.getUi();
   var ss = SpreadsheetApp.getActive();
   ensureSheet_(ss, SH.STAFF, STAFF_HEAD, [6, 7, 9]);
-  ensureSheet_(ss, SH.LEAVES, LEAVE_HEAD, [6, 7, 11, 12]);
+  ensureHead_(ensureSheet_(ss, SH.LEAVES, LEAVE_HEAD, [6, 7, 11, 12, 16]), LEAVE_HEAD);
   ensureSheet_(ss, SH.CARRY, CARRY_HEAD, []);
   var t = ensureSheet_(ss, SH.TYPES, TYPES_HEAD, []);
   if (t.getLastRow() < 2) t.getRange(2, 1, DEFAULT_TYPES.length, 6).setValues(DEFAULT_TYPES);
@@ -327,6 +329,33 @@ function deleteLeave(token, leaveId) {
   return { data: buildData_(s) };
 }
 
+// ขอยกเลิกวันลา: รายการยังอยู่ในประวัติ แต่ไม่นับเป็นวันลาที่ใช้ไป
+function cancelLeave(token, leaveId, reason) {
+  var s = requireHR_(token);
+  reason = String(reason || '').trim();
+  if (!reason) throw new Error('กรุณาระบุเหตุผลการยกเลิก');
+  withLock_(function () {
+    var me = findStaff_(s.id);
+    var sh = sheet_(SH.LEAVES), row = leaveRow_(sh, leaveId);
+    ensureHead_(sh, LEAVE_HEAD);
+    if (isCancelled_(sh.getRange(row, 15).getValue())) throw new Error('รายการนี้ยกเลิกไปแล้ว');
+    sh.getRange(row, 16).setNumberFormat('@'); // เหตุผลเก็บเป็นข้อความ (กัน = กลายเป็นสูตร)
+    sh.getRange(row, 15, 1, 4).setValues([[CANCELLED, reason.slice(0, 500), me.name, new Date()]]);
+  });
+  return { data: buildData_(s) };
+}
+
+// คืนสถานะรายการที่ยกเลิกผิด กลับมานับเป็นวันลาตามเดิม
+function restoreLeave(token, leaveId) {
+  var s = requireHR_(token);
+  withLock_(function () {
+    var sh = sheet_(SH.LEAVES), row = leaveRow_(sh, leaveId);
+    if (!isCancelled_(sh.getRange(row, 15).getValue())) throw new Error('รายการนี้ไม่ได้ถูกยกเลิก');
+    sh.getRange(row, 15, 1, 4).setValues([['', '', '', '']]);
+  });
+  return { data: buildData_(s) };
+}
+
 function saveCarry(token, staffId, fy, vals) {
   var s = requireHR_(token);
   fy = Number(fy);
@@ -406,7 +435,9 @@ function buildData_(s) {
     var k = String(x[3]).trim();
     return { id: String(x[0]), staffId: String(x[1]), kind: KIND_ALIASES[k] || k, emergency: x[4] === true || String(x[4]).toUpperCase() === 'TRUE',
       start: isoCell_(x[5]), end: isoCell_(x[6]), half: String(x[7] || 'full'), days: Number(x[8]) || 0, fy: Number(x[9]) || fyOf_(isoCell_(x[5])),
-      note: String(x[10] || ''), docNo: String(x[11] || ''), recordedBy: String(x[12] || '') };
+      note: String(x[10] || ''), docNo: String(x[11] || ''), recordedBy: String(x[12] || ''),
+      cancelled: isCancelled_(x[14]), cancelReason: String(x[15] || ''), cancelledBy: String(x[16] || ''),
+      cancelledAt: x[17] instanceof Date ? Utilities.formatDate(x[17], tz_(), 'yyyy-MM-dd') : isoCell_(x[17]) };
   });
   var carry = rowsOf_(SH.CARRY).map(function (x) {
     return { staffId: String(x[0]), fy: Number(x[2]), sick: x[3] === '' ? null : Number(x[3]), personal: x[4] === '' ? null : Number(x[4]), vacation: x[5] === '' ? null : Number(x[5]) };
@@ -496,6 +527,18 @@ function deleteWhere_(name, col, val) {
   var sh = sheet_(name);
   var v = sh.getDataRange().getValues();
   for (var i = v.length - 1; i >= 1; i--) if (String(isoCellOrRaw_(v[i][col - 1])) === String(val)) sh.deleteRow(i + 1);
+}
+function leaveRow_(sh, leaveId) {
+  var ids = sh.getRange(1, 1, Math.max(sh.getLastRow(), 1), 1).getValues();
+  for (var i = 1; i < ids.length; i++) if (String(ids[i][0]) === String(leaveId)) return i + 1;
+  throw new Error('ไม่พบรายการลา (อาจถูกลบไปแล้ว) กรุณาโหลดหน้าใหม่');
+}
+function isCancelled_(v) { return String(v == null ? '' : v).trim() === CANCELLED; }
+// เติมหัวคอลัมน์ที่ยังไม่มี (ชีตที่สร้างก่อนเพิ่มคอลัมน์ใหม่) โดยไม่แตะข้อมูลเดิม
+function ensureHead_(sh, head) {
+  var cur = sh.getRange(1, 1, 1, head.length).getValues()[0];
+  for (var c = 0; c < head.length; c++) if (String(cur[c] || '').trim() === '') sh.getRange(1, c + 1).setValue(head[c]);
+  return sh;
 }
 function renameInSheet_(name, idCol, nameCol, id, newName) {
   var sh = sheet_(name);
@@ -602,7 +645,7 @@ function apiFn_(name) {
   var api = {
     login: login, logout: logout, bootstrap: bootstrap, changePassword: changePassword,
     saveStaff: saveStaff, deleteStaff: deleteStaff, resetPassword: resetPassword,
-    addLeave: addLeave, deleteLeave: deleteLeave, saveCarry: saveCarry, saveTypes: saveTypes,
+    addLeave: addLeave, deleteLeave: deleteLeave, cancelLeave: cancelLeave, restoreLeave: restoreLeave, saveCarry: saveCarry, saveTypes: saveTypes,
     addHoliday: addHoliday, deleteHoliday: deleteHoliday, exportSheet: exportSheet
   };
   return Object.prototype.hasOwnProperty.call(api, name) ? api[name] : null;

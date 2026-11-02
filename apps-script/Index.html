@@ -185,6 +185,9 @@ td.num,th.num{text-align:right}
 .person-head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow)}
 .person-head h2{font-size:1.5rem}
 .confirm{display:inline-flex;gap:6px;align-items:center}
+.cxl-form{flex-wrap:wrap}.cxl-form input{min-width:200px;padding:5px 8px}
+tr.cancelled td.strike{text-decoration:line-through;color:var(--muted)}
+.cxl-note{color:var(--danger)}
 .ico{width:16px;height:16px;flex:0 0 auto}
 .userbox{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .userbox .who{display:flex;flex-direction:column;line-height:1.2;text-align:right;margin-right:4px}
@@ -457,8 +460,9 @@ function applyData(d){
   S.me = d.me; S.isHR = !!d.isHR;
   S.config = {...DEFAULT_CONFIG, ...d.config, types: Object.keys(d.config.types||{}).length ? d.config.types : DEFAULT_CONFIG.types};
   const m = new Map();
-  for(const st of d.staff) m.set(st.id, {...st, leaves:[], carry:{}, carryK:{sick:{}, personal:{}}});
-  for(const l of d.leaves){ const p=m.get(l.staffId); if(p) p.leaves.push(l); }
+  for(const st of d.staff) m.set(st.id, {...st, leaves:[], cancelled:[], carry:{}, carryK:{sick:{}, personal:{}}});
+  // รายการที่ยกเลิกแล้วแยกไว้ใน p.cancelled: แสดงในประวัติ แต่ไม่นับเป็นวันลาที่ใช้ไป
+  for(const l of d.leaves){ const p=m.get(l.staffId); if(p) (l.cancelled?p.cancelled:p.leaves).push(l); }
   for(const c of d.carry){ const p=m.get(c.staffId); if(!p) continue;
     if(c.vacation!=null) p.carry[c.fy]=c.vacation; if(c.sick!=null) p.carryK.sick[c.fy]=c.sick; if(c.personal!=null) p.carryK.personal[c.fy]=c.personal; }
   S.staff = m; S.staffLoaded = true;
@@ -488,8 +492,7 @@ function doLogout(silent){
 // ---------- rendering ----------
 function fyOptions(){
   const now = fyOf(todayIso()); const set = new Set([now, now-1, now+1, Number(S.config.startFY)||now]);
-  for(const p of S.staff.values()) for(const l of (p.leaves||[])) set.add(l.fy);
-  if(S.myDoc) for(const l of (S.myDoc.leaves||[])) set.add(l.fy);
+  for(const p of S.staff.values()) for(const l of [...(p.leaves||[]), ...(p.cancelled||[])]) set.add(l.fy);
   const list=[...set].filter(Boolean).sort((a,b)=>b-a);
   $fy.innerHTML = list.map(f=>`<option value="${f}" ${f===S.fy?"selected":""}>${f}</option>`).join("");
 }
@@ -571,13 +574,23 @@ function balanceCards(p, fy){
   return `<div class="balances">${card("sick")}${card("personal",perExtra)}${card("vacation",vacExtra)}</div>`;
 }
 function leaveTable(p, fy, editable){
-  const ls = (p.leaves||[]).filter(l=>l.fy===fy).sort((a,b)=>b.start.localeCompare(a.start));
+  const ls = [...(p.leaves||[]), ...(p.cancelled||[])].filter(l=>l.fy===fy).sort((a,b)=>b.start.localeCompare(a.start));
   if(!ls.length) return `<div class="panel empty"><h3>ไม่มีรายการลาในปีงบประมาณ ${fy}</h3><p>${editable?"กด “บันทึกการลา” เพื่อเพิ่มรายการ":"เมื่อ HR บันทึกการลาของคุณ รายการจะแสดงที่นี่"}</p></div>`;
+  const actions = l => {
+    const id=esc(l.id), k=S.confirmKey;
+    if(k==="del:"+l.id) return `<span class="confirm"><button class="small danger" data-act="del-leave" data-id="${id}">ยืนยันลบ</button><button class="small ghost" data-act="cancel">ไม่ลบ</button></span>`;
+    if(k==="cxl:"+l.id) return `<form class="confirm cxl-form" id="cxlForm" data-id="${id}"><input id="cxl_reason" maxlength="500" placeholder="เหตุผลการยกเลิก (จำเป็น)" aria-label="เหตุผลการยกเลิกวันลา" required>
+      <button type="submit" class="small danger">ยืนยันยกเลิกวันลา</button><button type="button" class="small ghost" data-act="cancel">ปิด</button></form>`;
+    if(k==="rst:"+l.id) return `<span class="confirm"><button class="small primary" data-act="restore-leave" data-id="${id}">ยืนยันคืนสถานะ</button><button class="small ghost" data-act="cancel">ปิด</button></span>`;
+    return `<span class="confirm">${l.cancelled
+      ?`<button class="small ghost" data-act="ask" data-k="rst:${id}">คืนสถานะ</button>`
+      :`<button class="small ghost" data-act="ask" data-k="cxl:${id}">ยกเลิกวันลา</button>`}<button class="small ghost" data-act="ask" data-k="del:${id}">ลบ</button></span>`;
+  };
   return `<div class="tbl-wrap"><table><thead><tr><th>ประเภท</th><th>ตั้งแต่</th><th>ถึง</th><th class="num">วันทำการ</th><th>หมายเหตุ</th>${editable?"<th></th>":""}</tr></thead><tbody>
-  ${ls.map(l=>{ const K=KINDS[l.kind]||{cls:"neutral",label:esc(l.kind||"?")}; return `<tr><td><span class="pill ${K.cls}">${K.label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}</td>
-    <td>${thDate(l.start)}${l.half&&l.half!=="full"?` <small class="muted">(${l.half==="am"?"ครึ่งเช้า":"ครึ่งบ่าย"})</small>`:""}</td><td>${thDate(l.end)}</td>
-    <td class="num">${fmtN(l.days)}</td><td style="white-space:normal;min-width:160px">${esc(l.note||"")}${l.docNo?`<br><small class="muted">เลขที่ ${esc(l.docNo)}</small>`:""}</td>
-    ${editable?`<td>${S.confirmKey==="del:"+l.id?`<span class="confirm"><button class="small danger" data-act="del-leave" data-id="${esc(l.id)}">ยืนยันลบ</button><button class="small ghost" data-act="cancel">ยกเลิก</button></span>`:`<button class="small ghost" data-act="ask" data-k="del:${esc(l.id)}">ลบ</button>`}</td>`:""}</tr>`; }).join("")}
+  ${ls.map(l=>{ const K=KINDS[l.kind]||{cls:"neutral",label:esc(l.kind||"?")}; return `<tr${l.cancelled?' class="cancelled"':""}><td><span class="pill ${K.cls}">${K.label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}${l.cancelled?` <span class="pill neutral">ยกเลิกแล้ว</span>`:""}</td>
+    <td class="strike">${thDate(l.start)}${l.half&&l.half!=="full"?` <small class="muted">(${l.half==="am"?"ครึ่งเช้า":"ครึ่งบ่าย"})</small>`:""}</td><td class="strike">${thDate(l.end)}</td>
+    <td class="num strike">${fmtN(l.days)}</td><td style="white-space:normal;min-width:160px">${esc(l.note||"")}${l.docNo?`<br><small class="muted">เลขที่ ${esc(l.docNo)}</small>`:""}${l.cancelled?`<br><small class="cxl-note">ยกเลิก${l.cancelledAt?" "+thDate(l.cancelledAt):""}${l.cancelledBy?" โดย "+esc(l.cancelledBy):""}: ${esc(l.cancelReason||"-")}</small>`:""}</td>
+    ${editable?`<td>${actions(l)}</td>`:""}</tr>`; }).join("")}
   </tbody></table></div>`;
 }
 function viewPerson(){
@@ -695,7 +708,7 @@ function staffModal(){
 }
 function deleteModal(){
   const id = S.delStaff; const p = id && S.staff.get(id); if(!p) return "";
-  const n = (p.leaves||[]).length;
+  const n = (p.leaves||[]).length + (p.cancelled||[]).length;
   return `<div class="overlay" data-act="overlay"><div class="modal sm" role="alertdialog" aria-modal="true" aria-labelledby="dTitle">
     <div class="m-head danger"><span class="badge">${ICON.trash}</span><h3 id="dTitle">ลบบุคลากร</h3></div>
     <div class="m-body"><p style="margin:0">ต้องการลบ <b>${esc(p.name)}</b> ออกจากระบบใช่ไหม</p>
@@ -862,7 +875,10 @@ document.addEventListener("click", async ev => {
   else if(a==="person"){ S.personId=id; S.view="person"; S.confirmKey=null; render(); window.scrollTo(0,0); }
   else if(a==="record-for"){ S.draft={staffId:id, kind:"sick", start:todayIso(), end:todayIso(), half:"full", emergency:false, note:"", docNo:"", daysOverride:""}; S.view="record"; render(); }
   else if(a==="reset-draft"){ S.draft=null; render(); }
-  else if(a==="ask"){ S.confirmKey=t.dataset.k; render(); }
+  else if(a==="ask"){ S.confirmKey=t.dataset.k; render(); document.getElementById("cxl_reason")?.focus(); }
+  else if(a==="restore-leave"){
+    S.confirmKey=null; try{ await call("restoreLeave", id); toast("คืนสถานะรายการลาแล้ว"); }catch(e){}
+  }
   else if(a==="cancel"){ S.confirmKey=null; render(); }
   else if(a==="del-leave"){
     S.confirmKey=null; try{ await call("deleteLeave", id); toast("ลบรายการลาแล้ว"); }catch(e){}
@@ -976,6 +992,12 @@ document.addEventListener("input", ev => {
 document.addEventListener("submit", async ev => {
   ev.preventDefault();
   const f = ev.target;
+  if(f.id==="cxlForm"){
+    const reason=(document.getElementById("cxl_reason")?.value||"").trim();
+    if(!reason){ toast("กรุณาระบุเหตุผลการยกเลิก"); return; }
+    S.confirmKey=null; try{ await call("cancelLeave", f.dataset.id, reason); toast("ยกเลิกวันลาแล้ว วันที่ยกเลิกไม่นับเป็นวันลา"); }catch(e){}
+    return;
+  }
   if(f.id==="leaveForm"){
     readDraft(); const d=S.draft;
     if(!d.staffId){ toast("เลือกบุคลากรก่อน"); return; }
