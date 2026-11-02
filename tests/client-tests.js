@@ -96,7 +96,7 @@
       await click('[data-act="tab"][data-v="summary"]');
       await click(`[data-act="person"][data-id="${bRow[0]}"]`);
       ok('person view shows balances', /คงเหลือ/.test(text()));
-      const askBtn = document.querySelector('[data-act="ask"]');
+      const askBtn = document.querySelector('[data-act="ask"][data-k^="del:"]');
       await click(askBtn); await click('[data-act="del-leave"]'); await wait(200);
       ok('delete leave', leaves().length === 2, leaves().length);
       // vacation card: 10/yr, no carry yet → quota 10; enter carry 5 → quota 15
@@ -111,6 +111,22 @@
       const sickCard = card(/ลาป่วย/);
       // remaining sick leaves after the delete: 2–4 Nov (3) + half day 5 Nov (0.5) → used 3.5, left 56.5
       ok('sick: quota 60, used 3.5, left 56.5', quotaOf(sickCard) === 60 && /56\.5/.test(sickCard.innerText) && /3\.5 วัน/.test(sickCard.innerText), sickCard && sickCard.innerText.replace(/\s+/g, ' ').slice(0, 300));
+
+      // ขอยกเลิกวันลา: ครึ่งวัน 5 พ.ย. (แถวแรก เรียงล่าสุดก่อน) → ใช้ไป 3, คงเหลือ 57
+      const usedSick = () => { const c = card(/ลาป่วย/); const mm = c && c.innerText.match(/ประจำปี \(ปีงบ \d+\)\s*([\d.]+) วัน/); return mm && Number(mm[1]); };
+      await click('[data-act="ask"][data-k^="cxl:"]');
+      ok('cancel form opens with reason box', !!$('#cxl_reason') && document.activeElement === $('#cxl_reason'));
+      $('#cxlForm').requestSubmit(); await wait(200);
+      ok('cancel without reason blocked', !!$('#cxl_reason') && !leaves().some(r => r[14] === 'ยกเลิก'));
+      await setv('#cxl_reason', 'กลับมาปฏิบัติงาน', 'input'); $('#cxlForm').requestSubmit(); await wait(250);
+      const cRow = leaves().find(r => r[14] === 'ยกเลิก');
+      ok('cancel saved to sheet', cRow && Number(cRow[8]) === 0.5 && cRow[15] === 'กลับมาปฏิบัติงาน' && leaves().length === 2, JSON.stringify(cRow));
+      ok('cancelled leave not counted (used 3)', usedSick() === 3 && /57/.test(card(/ลาป่วย/).innerText), usedSick());
+      ok('cancelled row shown with reason', !!$('tr.cancelled') && /ยกเลิกแล้ว/.test($('tr.cancelled').innerText) && /กลับมาปฏิบัติงาน/.test($('tr.cancelled').innerText));
+      await click('[data-act="ask"][data-k^="rst:"]'); await click('[data-act="restore-leave"]'); await wait(200);
+      ok('restore counts again (used 3.5)', usedSick() === 3.5 && !$('tr.cancelled') && !leaves().some(r => r[14] === 'ยกเลิก'), usedSick());
+      // ยกเลิกไว้อีกครั้งเพื่อตรวจมุมมองของบุคลากรตอนท้าย
+      await click('[data-act="ask"][data-k^="cxl:"]'); await setv('#cxl_reason', 'ทดสอบ', 'input'); $('#cxlForm').requestSubmit(); await wait(250);
 
       // settings: add holiday via UI
       await click('[data-act="tab"][data-v="settings"]');
@@ -146,6 +162,7 @@
       await login('บานเย็น แสงแก้ว', ST_CID);
       if ($('#pwForm')) await click('[data-act="pw-close"]');
       ok('staff sees own leave only', /บานเย็น/.test(text()) && !/กิตติ/.test(text()) && /ลาป่วย/.test(text()));
+      ok('staff sees cancelled leave, no action buttons', !!$('tr.cancelled') && !$('[data-k^="cxl:"]') && !$('[data-k^="rst:"]'));
     } catch (e) { log.push('CRASH ' + e.stack); }
     ok('no JS errors', window.__errors.length === 0, JSON.stringify(window.__errors));
     return log;

@@ -83,6 +83,25 @@ window.runServerTests = function () {
     d = A.deleteLeave(T, 'manual1').data;
     ok('deleteLeave', !d.leaves.some(x => x.id === 'manual1') && d.leaves.length === 1);
 
+    // 7b. ขอยกเลิกวันลา / คืนสถานะ
+    // ชีตเก่าที่มีแค่ 14 คอลัมน์: ตัดหัวคอลัมน์ใหม่ออกก่อน แล้วระบบต้องเติมให้เอง
+    rows('การลา')[0].length = 14;
+    ok('old leave stays active', d.leaves.find(x => x.id === lv.id).cancelled === false);
+    ok('staff cannot cancelLeave', throws(() => A.cancelLeave(SL.token, lv.id, 'x'), /HR/) || throws(() => A.cancelLeave(SL.token, lv.id, 'x')));
+    ok('cancel needs reason', throws(() => A.cancelLeave(T, lv.id, '   '), /เหตุผล/));
+    ok('cancel unknown id', throws(() => A.cancelLeave(T, 'nope', 'x'), /ไม่พบ/));
+    d = A.cancelLeave(T, lv.id, '=ไปราชการแทน').data;
+    const cl = d.leaves.find(x => x.id === lv.id);
+    ok('cancelLeave marks cancelled, keeps row', cl && cl.cancelled === true && cl.cancelReason === '=ไปราชการแทน' && cl.cancelledBy === 'นายทดสอบ ผู้ดูแล' && /^\d{4}-\d{2}-\d{2}$/.test(cl.cancelledAt), cl);
+    ok('cancel header added to old sheet', rows('การลา')[0][14] === 'สถานะ' && rows('การลา')[0][17] === 'เวลายกเลิก', rows('การลา')[0]);
+    ok('no Date in data after cancel', !noDates(d), noDates(d));
+    ok('cancel twice rejected', throws(() => A.cancelLeave(T, lv.id, 'x'), /ยกเลิกไปแล้ว/));
+    ok('staff sees own cancelled leave', A.bootstrap(A.login('มณีรัตน์ สมสุข', sCid).token).data.leaves.some(x => x.id === lv.id && x.cancelled));
+    d = A.restoreLeave(T, lv.id).data;
+    ok('restoreLeave clears cancel', d.leaves.find(x => x.id === lv.id).cancelled === false && d.leaves.find(x => x.id === lv.id).cancelReason === '');
+    ok('restore active rejected', throws(() => A.restoreLeave(T, lv.id), /ไม่ได้ถูกยกเลิก/));
+    ok('API exposes cancel/restore', !!A.apiFn_('cancelLeave') && !!A.apiFn_('restoreLeave'));
+
     // 8. carry
     d = A.saveCarry(T, st.id, 2570, { sick: '', personal: '', vacation: 5 }).data;
     ok('saveCarry', d.carry.some(c => c.staffId === st.id && c.vacation === 5 && c.sick === null));
