@@ -48,7 +48,20 @@ powershell -ExecutionPolicy Bypass -File tests\run-tests.ps1
 รัน `Code.gs` บนชีตจำลองในเครื่อง (เข้าระบบ เปลี่ยน/รีเซ็ตรหัส บันทึก/ลบการลา ยอดยกมา วันหยุด สิทธิ์ ส่งออก)
 และทดสอบหน้า `Index.html` จริงใน Chrome แบบ headless — ไม่แตะชีตจริง ต้องขึ้น "ผ่านทั้งหมด" ก่อน commit
 
-## หลังอัปเดตโค้ด (ระบบที่ใช้งานอยู่แล้ว)
+## อัปเดตอัตโนมัติจาก GitHub (ตั้งค่าครั้งเดียว)
+
+เมื่อตั้งค่าแล้ว ทุกครั้งที่ push ขึ้น `main` ระบบจริงจะดึง `Code.gs` / `Index.html` / `appsscript.json` ไปแทนโค้ดใน Apps Script
+สร้างเวอร์ชันใหม่ และชี้ลิงก์ `/exec` เดิมไปที่เวอร์ชันนั้นเองภายใน ~10 นาที (ไม่ต้องวางโค้ดหรือ Deploy เองอีก)
+
+1. เปิด **Google Apps Script API** ที่ https://script.google.com/home/usersettings (บัญชีเจ้าของสคริปต์)
+2. สร้าง GitHub token ที่ https://github.com/settings/personal-access-tokens/new — Repository access: เฉพาะ `leave-system`, Permissions → Contents: **Read-only**
+3. ใน Apps Script: **การตั้งค่าโปรเจกต์ → ✔ แสดงไฟล์ Manifest "appsscript.json"** แล้ววาง `appsscript.json` และ `Code.gs` จาก repo ทับ → บันทึก
+4. เปิดชีตใหม่ → เมนู **ระบบวันลา → ตั้งค่าอัปเดตอัตโนมัติจาก GitHub** → อนุญาตสิทธิ์ → วาง token → ระบบอัปเดตและ Deploy รอบแรกทันที
+- อัปเดตทันทีโดยไม่รอ: เมนู **อัปเดตจาก GitHub ตอนนี้**
+- ข้อผิดพลาดล่าสุดเก็บใน Script Properties `GH_ERROR` (ระบบไม่อัปเดตถ้า Code.gs บน GitHub ไม่มีตัวอัปเดต หรือ appsscript.json ขาดสิทธิ์)
+- **เพราะ push ขึ้น main = ขึ้นระบบจริง: รัน `tests\run-tests.ps1` ให้ผ่านทุกครั้งก่อน push** (พัฒนาบน branch `dev` แล้วค่อยรวมเข้า main)
+
+## หลังอัปเดตโค้ด (ระบบที่ใช้งานอยู่แล้ว — กรณีไม่ได้ตั้งค่าอัปเดตอัตโนมัติ)
 
 1. วาง `Code.gs` และ `Index.html` ใหม่ทับใน Apps Script → บันทึก
 2. **ทำให้ใช้งานได้ → จัดการการทำให้ใช้งานได้ → แก้ไข (ดินสอ) → เวอร์ชัน: เวอร์ชันใหม่ → ทำให้ใช้งานได้** (ลิงก์ `/exec` เดิมใช้ต่อได้)

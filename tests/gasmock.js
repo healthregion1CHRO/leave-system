@@ -70,6 +70,7 @@
     const cache = new Map(), props = new Map();
     const prompts = [];
     let lockHeld = false;
+    const fetchHook = { fn: () => { throw new Error('no fetch mock'); } };
     const env = {
       SpreadsheetApp: {
         getActive: () => ss,
@@ -83,12 +84,16 @@
       },
       CacheService: { getScriptCache: () => ({ get: k => { if (k.length > 250) throw new Error('cache key too long'); return cache.has(k) ? cache.get(k) : null; }, put: (k, v) => { if (k.length > 250) throw new Error('cache key too long'); cache.set(k, v); }, remove: k => cache.delete(k) }) },
       LockService: { getScriptLock: () => ({ tryLock: () => { if (lockHeld) throw new Error('NESTED LOCK'); lockHeld = true; return true; }, releaseLock: () => { lockHeld = false; } }) },
-      PropertiesService: { getScriptProperties: () => ({ getProperty: k => props.get(k) || null, setProperty: (k, v) => props.set(k, v) }) },
-      ScriptApp: { getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/TEST/exec' }) },
+      PropertiesService: { getScriptProperties: () => ({ getProperty: k => props.get(k) || null, setProperty: (k, v) => props.set(k, v), deleteProperty: k => props.delete(k) }) },
+      ScriptApp: { getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/TEST/exec' }),
+        getScriptId: () => 'SCRIPT1', getOAuthToken: () => 'OAUTH', getProjectTriggers: () => [] },
+      // tests set m.fetch = (url, opts) => ({ code, body })
+      UrlFetchApp: { fetch: (url, opts) => { const r = fetchHook.fn(url, opts || {}); return { getResponseCode: () => r.code, getContentText: () => r.body }; } },
+      console: { error: () => {}, log: () => {} },
       Session: { getScriptTimeZone: () => 'Asia/Bangkok' },
       HtmlService: {},
     };
-    return { env, ss, cache, prompts, sheets };
+    return { env, ss, cache, prompts, sheets, props, fetchHook };
   }
 
   // load Code.gs source into an isolated scope; returns all top-level functions

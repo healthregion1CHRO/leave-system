@@ -198,5 +198,65 @@ window.runServerTests = function () {
     const dup = B.importCids_([[['x'], ['วิทย์ ใจกล้า', GasMock.cid('310010000008')], ['วิทย์ ใจกล้า', GasMock.cid('310010000009')]]]);
     ok('importCids ambiguous name not set', dup.dup.includes('นายวิทย์ ใจกล้า'), dup);
   } catch (e) { out.push('CRASH3 ' + e.stack); }
+
+  // อัปเดตอัตโนมัติจาก GitHub (จำลอง GitHub API + Apps Script API)
+  try {
+    const u = GasMock.loadServer(window.CODE_GS), U = u.api;
+    const SHA1 = 'a'.repeat(40), SHA2 = 'b'.repeat(40);
+    let sha = SHA1, codeSrc = 'function autoUpdateTick(){}', manifest = '{"oauthScopes":["x/auth/script.projects","x/auth/script.deployments"]}';
+    const calls = [];
+    let projectFiles = [{ name: 'Code', type: 'SERVER_JS', source: 'old' }, { name: 'Index', type: 'HTML', source: 'old' }, { name: 'appsscript', type: 'JSON', source: '{}' }, { name: 'Extra', type: 'SERVER_JS', source: 'keep me' }];
+    let ver = 3;
+    const deployments = [
+      { deploymentId: 'HEAD', deploymentConfig: { scriptId: 'SCRIPT1' }, entryPoints: [{ entryPointType: 'WEB_APP' }] },
+      { deploymentId: 'D1', deploymentConfig: { scriptId: 'SCRIPT1', versionNumber: 3 }, entryPoints: [{ entryPointType: 'WEB_APP' }] },
+      { deploymentId: 'D2', deploymentConfig: { scriptId: 'SCRIPT1', versionNumber: 2 }, entryPoints: [{ entryPointType: 'WEB_APP' }] }];
+    let ghCode = 200;
+    u.fetchHook.fn = (url, o) => {
+      const method = (o.method || 'get').toLowerCase();
+      calls.push(method + ' ' + url);
+      if (url.startsWith('https://api.github.com/')) {
+        if (o.headers.Authorization !== 'Bearer TOKEN') return { code: 401, body: '' };
+        if (ghCode !== 200) return { code: ghCode, body: '' };
+        if (/commits\/main$/.test(url)) return { code: 200, body: sha };
+        if (/Code\.gs\?ref=/.test(url)) return { code: 200, body: codeSrc };
+        if (/Index\.html\?ref=/.test(url)) return { code: 200, body: '<p>ใหม่</p>' };
+        if (/appsscript\.json\?ref=/.test(url)) return { code: 200, body: manifest };
+      }
+      const p = url.replace('https://script.googleapis.com/v1/projects/', '');
+      if (o.headers.Authorization !== 'Bearer OAUTH') return { code: 401, body: '{}' };
+      if (method === 'get' && p === 'SCRIPT1/content') return { code: 200, body: JSON.stringify({ files: projectFiles }) };
+      if (method === 'put' && p === 'SCRIPT1/content') { projectFiles = JSON.parse(o.payload).files; return { code: 200, body: '{}' }; }
+      if (method === 'post' && p === 'SCRIPT1/versions') return { code: 200, body: JSON.stringify({ versionNumber: ++ver }) };
+      if (method === 'get' && p === 'SCRIPT1/deployments') return { code: 200, body: JSON.stringify({ deployments }) };
+      const dm = p.match(/^SCRIPT1\/deployments\/(\w+)$/);
+      if (method === 'put' && dm) { deployments.find(d => d.deploymentId === dm[1]).deploymentConfig = JSON.parse(o.payload).deploymentConfig; return { code: 200, body: '{}' }; }
+      return { code: 404, body: '{"error":{"message":"nope"}}' };
+    };
+    let r = U.autoUpdate_(false);
+    ok('autoUpdate needs token', /token/.test(r.error || ''), r);
+    u.props.set('GH_TOKEN', 'TOKEN');
+    r = U.autoUpdate_(false);
+    ok('autoUpdate deploys new version', r.updated && r.version === 4 && r.deployments === 2, r);
+    ok('autoUpdate replaces 3 files, keeps others', projectFiles.length === 4 && projectFiles.find(f => f.name === 'Index').source === '<p>ใหม่</p>' && projectFiles.find(f => f.name === 'Extra').source === 'keep me' && projectFiles.find(f => f.name === 'Code').source === codeSrc, projectFiles.map(f => f.name));
+    ok('autoUpdate skips HEAD, updates D1+D2', !deployments[0].deploymentConfig.versionNumber && deployments[1].deploymentConfig.versionNumber === 4 && deployments[2].deploymentConfig.versionNumber === 4 && deployments[1].deploymentConfig.manifestFileName === 'appsscript');
+    ok('autoUpdate fetches files at that commit', calls.some(c => c.includes('Code.gs?ref=' + SHA1)));
+    calls.length = 0;
+    r = U.autoUpdate_(false);
+    ok('autoUpdate no-op on same commit', r.updated === false && calls.length === 1, calls);
+    sha = SHA2; codeSrc = 'function somethingElse(){}';
+    r = U.autoUpdate_(false);
+    ok('autoUpdate refuses code without updater', /ไม่มีตัวอัปเดต/.test(r.error || '') && u.props.get('GH_SHA') === SHA1 && ver === 4, r);
+    codeSrc = 'function autoUpdateTick(){} // v2'; manifest = '{}';
+    r = U.autoUpdate_(false);
+    ok('autoUpdate refuses manifest without scopes', /appsscript\.json/.test(r.error || '') && ver === 4, r);
+    manifest = '{"oauthScopes":["x/auth/script.projects","x/auth/script.deployments"]}'; ghCode = 401;
+    r = U.autoUpdate_(false);
+    ok('autoUpdate reports bad token, keeps old SHA', /token/.test(r.error || '') && u.props.get('GH_SHA') === SHA1 && /token/.test(u.props.get('GH_ERROR')), r);
+    ghCode = 200;
+    r = U.autoUpdate_(false);
+    ok('autoUpdate recovers next run', r.updated && r.sha === SHA2 && r.version === 5 && !u.props.get('GH_ERROR'), r);
+    ok('updater not exposed to web API', !U.apiFn_('autoUpdate_') && !U.apiFn_('menuUpdateNow') && !U.apiFn_('autoUpdateTick'));
+  } catch (e) { out.push('CRASH4 ' + e.stack); }
   return out;
 };
