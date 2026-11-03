@@ -253,6 +253,13 @@ button.icon-btn{display:inline-flex;align-items:center;gap:6px}
 button.del-strong{background:var(--danger);color:#fff;border-color:var(--danger);font-weight:600}
 @media (max-width:560px){header.top{position:static}th,td{padding:10px}.bal .big{font-size:2rem}.ring{width:80px;height:80px}.ring span{width:60px;height:60px}.brand h1{font-size:1.15rem}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+.cx-tile{text-align:left;cursor:pointer;font:inherit;color:inherit}
+.cx-tile.on{outline:2px solid var(--c);outline-offset:-2px}
+.cx-count{font-weight:400;font-size:.9rem}
+.chip.is-on.sick{background:var(--sick-soft);border-color:var(--sick);color:var(--sick)}
+.chip.is-on.per{background:var(--per-soft);border-color:var(--per-bar);color:var(--per)}
+.chip.is-on.vac{background:var(--vac-soft);border-color:var(--vac);color:var(--vac)}
+.chip.is-on.plain{background:var(--accent-soft);border-color:var(--accent)}
 </style>
 <style>html,body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
 </head>
@@ -374,13 +381,13 @@ const ICON = {
 };
 const actBtns = (id, withView) => `<div class="acts">${withView?`<button class="view" data-act="person" data-id="${esc(id)}" title="ดูการลา">${ICON.eye}<span>ดู</span></button>`:""}<button class="edit" data-act="edit-staff" data-id="${esc(id)}" title="แก้ไขข้อมูลบุคลากร">${ICON.edit}<span>แก้ไข</span></button><button class="del" data-act="ask-del-staff" data-id="${esc(id)}" title="ลบบุคลากร">${ICON.trash}<span>ลบ</span></button></div>`;
 const PAGE_SIZES = [10,20,30,40,50,60];
-function paginate(list, key){
+function paginate(list, key, unit="คน"){
   const size = S.pageSize || 10; const pages = Math.max(1, Math.ceil(list.length/size));
   const page = Math.min(Math.max(1, (S.page||{})[key]||1), pages);
   const start = (page-1)*size; const items = list.slice(start, start+size);
   const nums=[]; for(let i=1;i<=pages;i++){ if(i===1||i===pages||Math.abs(i-page)<=1) nums.push(i); else if(nums[nums.length-1]!=="…") nums.push("…"); }
   const html = `<div class="pager"><label class="ps">แสดง <select id="pageSize" aria-label="จำนวนรายการต่อหน้า">${PAGE_SIZES.map(n=>`<option value="${n}" ${n===size?"selected":""}>${n}</option>`).join("")}</select> รายการ/หน้า</label>
-    <span class="muted">${list.length ? `${start+1}–${start+items.length} จาก ${list.length} คน` : "ไม่มีรายการ"}</span><span class="spacer"></span>
+    <span class="muted">${list.length ? `${start+1}–${start+items.length} จาก ${list.length} ${unit}` : "ไม่มีรายการ"}</span><span class="spacer"></span>
     ${pages>1?`<div class="pg"><button class="small" data-act="page" data-k="${key}" data-p="${page-1}" ${page===1?"disabled":""} aria-label="หน้าก่อน">‹</button>${nums.map(n=>n==="…"?`<span class="muted">…</span>`:`<button class="small ${n===page?"cur":""}" data-act="page" data-k="${key}" data-p="${n}" ${n===page?'aria-current="page"':""}>${n}</button>`).join("")}<button class="small" data-act="page" data-k="${key}" data-p="${page+1}" ${page===pages?"disabled":""} aria-label="หน้าถัดไป">›</button></div>`:""}</div>`;
   return {items, html, start};
 }
@@ -497,13 +504,52 @@ function fyOptions(){
   $fy.innerHTML = list.map(f=>`<option value="${f}" ${f===S.fy?"selected":""}>${f}</option>`).join("");
 }
 function tabsHtml(){
-  const t = [["summary","สรุปรายบุคคล"],["record","บันทึกการลา"],["staff","รายชื่อบุคลากร"],["accounts","บัญชีผู้ใช้"],["settings","ตั้งค่าสิทธิ์และวันหยุด"]];
+  const t = [["summary","สรุปรายบุคคล"],["record","บันทึกการลา"],["staff","รายชื่อบุคลากร"],["cancel","ยกเลิกวันลา"],["accounts","บัญชีผู้ใช้"],["settings","ตั้งค่าสิทธิ์และวันหยุด"]];
   return t.map(([k,l])=>`<button data-act="tab" data-v="${k}" ${S.view===k||(S.view==="person"&&k==="summary")?'aria-current="page"':""}>${l}</button>`).join("");
 }
 function usageCell(b, kind){
   const pct = b.quota>0 ? Math.min(100, b.used/b.quota*100) : (b.used>0?100:0);
   const over = b.used > b.quota;
   return `<div class="usage ${over?"over":""}"><span class="t">${fmtN(b.used)} / ${fmtN(b.quota)}</span><span class="bar"><i style="width:${pct}%;background:${KINDS[kind].color}"></i></span><span class="cum">สะสมทุกปี ${fmtN(b.cum)} วัน</span></div>`;
+}
+// เมนูยกเลิกวันลา: เลือกประเภทการลา/บุคลากร แล้วยกเลิกหรือคืนสถานะ (ใช้ฟอร์ม cxlForm และปุ่ม restore-leave เดิม)
+function viewCancel(){
+  const fy=S.fy, kind=S.cxKind||"all", sid=S.cxStaff||"all", q=(S.cxQ||"").trim().toLowerCase();
+  const all=[]; for(const p of staffList()) for(const l of [...(p.leaves||[]), ...(p.cancelled||[])]) if(l.fy===fy) all.push({...l, _p:p});
+  const match=l=>(kind==="all"||l.kind===kind)&&(sid==="all"||l._p._id===sid)&&(!q||`${l._p.name} ${l.note||""} ${l.docNo||""} ${l.cancelReason||""}`.toLowerCase().includes(q));
+  const act=all.filter(l=>!l.cancelled&&match(l)).sort((a,b)=>b.start.localeCompare(a.start));
+  const hist=all.filter(l=>l.cancelled&&match(l)).sort((a,b)=>String(b.cancelledAt||"").localeCompare(String(a.cancelledAt||""))||b.start.localeCompare(a.start));
+  const st=k=>{ const x=all.filter(l=>l.cancelled&&(k==="all"||l.kind===k)); return {n:x.length,d:x.reduce((s,l)=>s+Number(l.days||0),0)}; };
+  const tile=(k,cls,lbl)=>{ const v=st(k); return `<button type="button" class="stat ${cls} cx-tile ${kind===k?"on":""}" data-act="cx-kind" data-k="${k}" aria-pressed="${kind===k}"><span class="lbl"><i></i>${lbl}</span><span class="val">${v.n}<small>ครั้ง · ${fmtN(v.d)} วัน</small></span></button>`; };
+  const pill=l=>{ const K=KINDS[l.kind]||{cls:"neutral",label:esc(l.kind||"?")}; return `<span class="pill ${K.cls}">${K.label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}`; };
+  const who=l=>`<div class="name-cell"><span class="av" aria-hidden="true">${esc(initial(l._p.name))}</span><span class="nm"><b>${esc(l._p.name)}</b><small>${esc(orgLine(l._p)||posLine(l._p)||"")}</small></span></div>`;
+  const range=l=>`${thDate(l.start)}${l.end!==l.start?" – "+thDate(l.end):""}${l.half&&l.half!=="full"?` <small class="muted">(${l.half==="am"?"ครึ่งเช้า":"ครึ่งบ่าย"})</small>`:""}`;
+  const pa=paginate(act,"cxa","รายการ"), ph=paginate(hist,"cxh","รายการ");
+  const actBtn=l=>{ const id=esc(l.id);
+    if(S.confirmKey==="cxl:"+l.id) return `<form class="confirm cxl-form" id="cxlForm" data-id="${id}"><input id="cxl_reason" maxlength="500" placeholder="เหตุผลการยกเลิก (จำเป็น)" aria-label="เหตุผลการยกเลิกวันลา" required>
+      <button type="submit" class="small danger">ยืนยันยกเลิกวันลา</button><button type="button" class="small ghost" data-act="cancel">ปิด</button></form>`;
+    return `<button class="small ghost" data-act="ask" data-k="cxl:${id}">ยกเลิกวันลา</button>`; };
+  const rstBtn=l=>{ const id=esc(l.id);
+    if(S.confirmKey==="rst:"+l.id) return `<span class="confirm"><button class="small primary" data-act="restore-leave" data-id="${id}">ยืนยันคืนสถานะ</button><button class="small ghost" data-act="cancel">ปิด</button></span>`;
+    return `<button class="small ghost" data-act="ask" data-k="rst:${id}">คืนสถานะ</button>`; };
+  const actRows=pa.items.map(l=>`<tr><td>${who(l)}</td><td>${pill(l)}</td><td>${range(l)}</td><td class="num">${fmtN(l.days)}</td><td style="white-space:normal;min-width:140px">${esc(l.note||"")}${l.docNo?`<br><small class="muted">เลขที่ ${esc(l.docNo)}</small>`:""}</td><td>${actBtn(l)}</td></tr>`).join("");
+  const histRows=ph.items.map(l=>`<tr class="cancelled"><td>${who(l)}</td><td>${pill(l)}</td><td class="strike">${range(l)}</td><td class="num strike">${fmtN(l.days)}</td>
+    <td style="white-space:normal;min-width:160px"><small class="cxl-note">${l.cancelledAt?thDate(l.cancelledAt):""}${l.cancelledBy?" โดย "+esc(l.cancelledBy):""}</small><br>${esc(l.cancelReason||"-")}</td><td>${rstBtn(l)}</td></tr>`).join("");
+  const sOpts=staffList().map(p=>`<option value="${esc(p._id)}" ${sid===p._id?"selected":""}>${esc(p.name)}</option>`).join("");
+  const kindName=kind==="all"?"ทุกประเภท":(KINDS[kind]||{label:kind}).label;
+  const chips=[["all","ทุกประเภท","plain"],["sick","ลาป่วย","sick"],["personal","ลากิจส่วนตัว","per"],["vacation","ลาพักผ่อน","vac"]]
+    .map(([k,l,c])=>`<button type="button" class="chip ${c} ${kind===k?"is-on":""}" data-act="cx-kind" data-k="${k}" aria-pressed="${kind===k}">${l}</button>`).join("");
+  return `<div><h2>ยกเลิกวันลา ปีงบประมาณ ${fy}</h2><span class="muted">เลือกประเภทการลาและบุคลากร แล้วกด “ยกเลิกวันลา” ที่รายการ วันที่ยกเลิกจะไม่นับเป็นวันลา และยังเก็บประวัติไว้</span></div>
+  <div class="stats">${tile("all","all","ยกเลิกทั้งหมด")}${tile("sick","sick","ยกเลิกลาป่วย")}${tile("personal","per","ยกเลิกลากิจส่วนตัว")}${tile("vacation","vac","ยกเลิกลาพักผ่อน")}</div>
+  <div class="toolbar"><div class="chips" role="group" aria-label="ประเภทการลา">${chips}</div>
+    <select id="cxstaff" aria-label="บุคลากร"><option value="all">บุคลากรทุกคน</option>${sOpts}</select>
+    <input id="cxq" type="search" placeholder="ค้นหาชื่อ หมายเหตุ เลขที่ใบลา" value="${esc(S.cxQ||"")}"></div>
+  <h3>รายการลาที่ยกเลิกได้ · ${kindName} <span class="muted cx-count">(${act.length} รายการ)</span></h3>
+  ${act.length?`<div class="tbl-wrap"><table><thead><tr><th>ชื่อ-สกุล</th><th>ประเภท</th><th>วันที่ลา</th><th class="num">วันทำการ</th><th>หมายเหตุ</th><th></th></tr></thead><tbody>${actRows}</tbody></table></div>${pa.html}`
+    :`<div class="panel empty"><h3>ไม่มีรายการลาที่ตรงเงื่อนไข</h3><p>ลองเปลี่ยนประเภทการลา บุคลากร หรือปีงบประมาณ</p></div>`}
+  <h3>ประวัติการยกเลิก · ${kindName} <span class="muted cx-count">(${hist.length} รายการ)</span></h3>
+  ${hist.length?`<div class="tbl-wrap"><table><thead><tr><th>ชื่อ-สกุล</th><th>ประเภท</th><th>วันที่ลา</th><th class="num">วันทำการ</th><th>ยกเลิกเมื่อ / เหตุผล</th><th></th></tr></thead><tbody>${histRows}</tbody></table></div>${ph.html}`
+    :`<div class="panel empty"><h3>ยังไม่มีการยกเลิกวันลา${kind==="all"?"":"ประเภทนี้"}</h3></div>`}`;
 }
 function staffList(){ return [...S.staff.entries()].map(([id,p])=>({...p,_id:id})).sort((a,b)=>(a.name||"").localeCompare(b.name||"","th",{numeric:true})); }
 
@@ -842,7 +888,7 @@ function render(){
   document.getElementById("roleLine").textContent = S.isHR ? "โหมดเจ้าหน้าที่ HR · บันทึกและดูการลาของบุคลากรทุกคน" : "การลาของฉัน · แสดงเฉพาะข้อมูลของคุณ";
   if(S.isHR){
     $tabs.hidden=false; $tabs.innerHTML = tabsHtml();
-    $app.innerHTML = ({summary:viewSummary, person:viewPerson, record:viewRecord, staff:viewStaff, accounts:viewAccounts, settings:viewSettings}[S.view]||viewSummary)();
+    $app.innerHTML = ({summary:viewSummary, person:viewPerson, record:viewRecord, staff:viewStaff, cancel:viewCancel, accounts:viewAccounts, settings:viewSettings}[S.view]||viewSummary)();
   } else {
     $tabs.hidden=true; $app.innerHTML = viewMine();
   }
@@ -871,6 +917,7 @@ document.addEventListener("click", async ev => {
   if(a==="reset-close"){ S.resetFor=null; render(); return; }
   if(a==="preview"){ S.previewAs=id; render(); window.scrollTo(0,0); return; }
   if(a==="preview-close"){ S.previewAs=null; render(); return; }
+  if(a==="cx-kind"){ S.cxKind=t.dataset.k; S.confirmKey=null; resetPages(); render(); return; }
   if(a==="tab"){ S.view=t.dataset.v; S.confirmKey=null; S.previewAs=null; S.editType=null; S.typeDraft=null;if(S.view!=="staff") S.editStaff=null; render(); window.scrollTo(0,0); }
   else if(a==="person"){ S.personId=id; S.view="person"; S.confirmKey=null; render(); window.scrollTo(0,0); }
   else if(a==="record-for"){ S.draft={staffId:id, kind:"sick", start:todayIso(), end:todayIso(), half:"full", emergency:false, note:"", docNo:"", daysOverride:""}; S.view="record"; render(); }
@@ -964,6 +1011,7 @@ document.addEventListener("change", ev => {
   if(id==="fgroup"){ S.filterGroup=ev.target.value; resetPages(); render(); }
   if(id==="sgroup"){ S.sGroup=ev.target.value; resetPages(); render(); }
   if(id==="astatus"){ S.aStatus=ev.target.value; resetPages(); render(); }
+  if(id==="cxstaff"){ S.cxStaff=ev.target.value; S.confirmKey=null; resetPages(); render(); }
   if(id==="s_group"){ captureStaffForm(); if(!sectionsOf(S.editStaff.group).includes(S.editStaff.section)) S.editStaff.section=""; render(); }
 });
 document.addEventListener("change", ev => {
@@ -983,6 +1031,7 @@ document.addEventListener("input", ev => {
   if(id==="q"){ S.q=ev.target.value; resetPages(); render(); }
   else if(id==="sq"){ S.sq=ev.target.value; resetPages(); render(); }
   else if(id==="aq"){ S.aq=ev.target.value; resetPages(); render(); }
+  else if(id==="cxq"){ S.cxQ=ev.target.value; resetPages(); render(); }
   else if(id==="lg_user"){ S.lgUser=ev.target.value; }
   else if(id==="h_n"){ S.hn=ev.target.value; }
   else if(S.view==="record" && (id==="f_note"||id==="f_doc"||id==="f_days")){ readDraft(); if(id==="f_days") refreshCalc(); }

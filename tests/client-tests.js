@@ -128,6 +128,24 @@
       // ยกเลิกไว้อีกครั้งเพื่อตรวจมุมมองของบุคลากรตอนท้าย
       await click('[data-act="ask"][data-k^="cxl:"]'); await setv('#cxl_reason', 'ทดสอบ', 'input'); $('#cxlForm').requestSubmit(); await wait(250);
 
+      // เมนูยกเลิกวันลา: กรองตามประเภท ยกเลิก/คืนสถานะ จากเมนูนี้ได้
+      await click('[data-act="tab"][data-v="cancel"]');
+      const tbls = () => [...document.querySelectorAll('#app table')].map(t => t.tBodies[0].rows.length);
+      const tileVal = k => ($('.cx-tile[data-k="' + k + '"] .val') || {}).innerText || '';
+      ok('cancel menu opens', /ยกเลิกวันลา ปีงบประมาณ/.test($('#app').innerText) && /^1/.test(tileVal('sick')) && /^1/.test(tileVal('all')) && /^0/.test(tileVal('vacation')), tileVal('all') + ' | ' + tileVal('sick'));
+      ok('cancel menu lists active + history', JSON.stringify(tbls()) === '[1,1]' && /ทดสอบ/.test($('tr.cancelled').innerText), JSON.stringify(tbls()));
+      await click('.chip[data-act="cx-kind"][data-k="vacation"]');
+      ok('filter by type (vacation → none)', tbls().length === 0 && /ไม่มีรายการลาที่ตรงเงื่อนไข/.test($('#app').innerText), JSON.stringify(tbls()));
+      await click('.chip[data-act="cx-kind"][data-k="sick"]');
+      await setv('#cxstaff', [...$('#cxstaff').options].find(o => /บานเย็น/.test(o.text)).value);
+      ok('filter by type + staff (sick)', JSON.stringify(tbls()) === '[1,1]', JSON.stringify(tbls()));
+      await click('#app tbody tr:not(.cancelled) [data-act="ask"][data-k^="cxl:"]');
+      await setv('#cxl_reason', 'ยกเลิกจากเมนู', 'input'); $('#cxlForm').requestSubmit(); await wait(250);
+      ok('cancel from menu saved', leaves().filter(r => r[14] === 'ยกเลิก').length === 2 && leaves().some(r => r[15] === 'ยกเลิกจากเมนู') && /^2/.test(tileVal('sick')) && JSON.stringify(tbls()) === '[2]', JSON.stringify(tbls()));
+      const rr = [...document.querySelectorAll('#app tr.cancelled')].find(r => /ยกเลิกจากเมนู/.test(r.innerText));
+      await click(rr.querySelector('[data-k^="rst:"]')); await click('[data-act="restore-leave"]'); await wait(200);
+      ok('restore from menu', leaves().filter(r => r[14] === 'ยกเลิก').length === 1 && !leaves().some(r => r[15] === 'ยกเลิกจากเมนู') && JSON.stringify(tbls()) === '[1,1]', JSON.stringify(tbls()));
+
       // settings: add holiday via UI
       await click('[data-act="tab"][data-v="settings"]');
       if ($('#h_d_txt')) { await setv('#h_d_txt', '05/12/2569'); await setv('#h_n', 'ทดสอบ', 'input'); $('#holForm').requestSubmit(); await wait(200); }
@@ -163,6 +181,7 @@
       if ($('#pwForm')) await click('[data-act="pw-close"]');
       ok('staff sees own leave only', /บานเย็น/.test(text()) && !/กิตติ/.test(text()) && /ลาป่วย/.test(text()));
       ok('staff sees cancelled leave, no action buttons', !!$('tr.cancelled') && !$('[data-k^="cxl:"]') && !$('[data-k^="rst:"]'));
+      ok('staff has no cancel menu', $('#tabs').hidden && !/ยกเลิกวันลา ปีงบประมาณ/.test($('#app').innerText));
     } catch (e) { log.push('CRASH ' + e.stack); }
     ok('no JS errors', window.__errors.length === 0, JSON.stringify(window.__errors));
     return log;
