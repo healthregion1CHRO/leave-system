@@ -1,0 +1,47 @@
+# ทุกครั้งที่ push ขึ้น main: รันชุดทดสอบ → ถ้าผ่าน สร้างหน้าเว็บจาก apps-script/Index.html แล้วขึ้น GitHub Pages
+# ตั้งค่าครั้งเดียว: Settings → Pages → Build and deployment → Source: GitHub Actions
+name: ทดสอบและขึ้นหน้าเว็บ
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: ติดตั้ง Playwright
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.48.2
+          npx playwright install --with-deps chromium
+      - name: รันชุดทดสอบ (Code.gs + Index.html)
+        run: node tests/run-tests.js
+      - name: สร้างหน้าเว็บ
+        run: node tools/build-pages.js _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: test-build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
