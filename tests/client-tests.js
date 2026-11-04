@@ -104,6 +104,17 @@
       await click(cell('2026-11-05'));
       ok('day detail lists person with half-day', /ผู้ลาวันที่ 5 พ.ย. 2569/.test(text()) && /ครึ่งเช้า/.test(text()));
       ok('month list has 3 leaves', document.querySelectorAll('.tbl-wrap')[1]?.querySelectorAll('tbody tr').length === 3);
+      const tileDays = k => Number((($(`.cx-tile[data-act="cal-kind"][data-k="${k}"] .val`) || {}).innerText || '').replace(/[^\d.]/g, ''));
+      const sickDays = tileDays('sick');
+      ok('summary tiles per type', !!$('.lc-stats') && sickDays > 0 && tileDays('all') === sickDays + tileDays('personal') + tileDays('vacation') && /คน · \d+ ครั้ง/.test($('.cx-tile[data-k="sick"]').innerText), [tileDays('all'), sickDays, tileDays('personal'), tileDays('vacation')].join(','));
+      await click('.lc-per summary');
+      const perRows = [...document.querySelectorAll('.lc-per-tbl tbody tr')];
+      ok('per-person summary table', perRows.length >= 2 && /บานเย็น/.test(perRows[0].innerText) && /รวม/.test(perRows[perRows.length - 1].innerText) && perRows[perRows.length - 1].innerText.includes(String(sickDays)), perRows.map(r => r.innerText.replace(/\s+/g, ' ')).join(' | '));
+      await click('.lc-per summary');
+      ok('per-person summary collapses', !$('.lc-per-tbl'));
+      await click('.cx-tile[data-act="cal-kind"][data-k="vacation"]');
+      ok('tile click filters calendar', $('#cal_kind').value === 'vacation' && !cell('2026-11-03').querySelector('.lc-count') && tileDays('sick') === sickDays);
+      await click('.cx-tile[data-act="cal-kind"][data-k="all"]');
       await setv('#cal_kind', 'vacation');
       ok('kind filter hides sick leave', !cell('2026-11-03').querySelector('.lc-count'));
       await setv('#cal_kind', 'all');

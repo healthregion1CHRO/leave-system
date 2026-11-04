@@ -302,6 +302,12 @@ button.del-strong{background:var(--danger);color:#fff;border-color:var(--danger)
 .sp-list li.sp-none,.sp-list li.sp-more{cursor:default;color:var(--muted);font-size:.85rem}
 .sp-list mark{background:transparent;color:var(--accent-strong,var(--accent));font-weight:700}
 .sp-sel{color:var(--muted);margin-top:4px;display:block}
+.lc-stats{margin:4px 0 14px}
+.lc-tsub{font-size:.8rem;color:var(--muted);position:relative;z-index:1}
+.lc-per{margin:0 0 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px}
+.lc-per summary{cursor:pointer;font-weight:600}
+.lc-per[open] summary{margin-bottom:10px}
+.lc-per tr.lc-total td{background:var(--accent-soft)}
 </style>
 <style>html,body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
 </head>
@@ -976,9 +982,9 @@ function viewSettings(){
 // ---------- ปฏิทินการลา (HR): ใครลาวันไหน + รายละเอียด ----------
 const shortName = n => String(n||"").replace(/^(นางสาว|นาย|นาง|น\.ส\.)\s*/,"").trim().split(/\s+/)[0] || "-";
 const halfTxt = l => l.half&&l.half!=="full" ? (l.half==="am"?"ครึ่งเช้า":"ครึ่งบ่าย") : "";
-function calMonthData(ym){
+function calMonthData(ym, kindOverride){
   const [y,m]=ym.split("-").map(Number), dim=new Date(Date.UTC(y,m,0)).getUTCDate();
-  const from=`${ym}-01`, to=`${ym}-${String(dim).padStart(2,"0")}`, kf=S.calKind||"all", gf=S.calGroup||"";
+  const from=`${ym}-01`, to=`${ym}-${String(dim).padStart(2,"0")}`, kf=kindOverride||S.calKind||"all", gf=S.calGroup||"";
   const byDay=new Map(), list=[];
   for(const p of staffList()){
     if(gf && groupOf(p)!==gf) continue;
@@ -987,7 +993,9 @@ function calMonthData(ym){
       if(l.end<from || l.start>to) continue;
       let ds=leaveWorkDates(l); if(!ds.length) ds=[l.start];
       const inMonth=ds.filter(d=>d>=from && d<=to); if(!inMonth.length) continue;
-      list.push({l,p,inMonth:inMonth.length});
+      // วันลาที่ตกในเดือนนี้: ทั้งรายการอยู่ในเดือน = ตามที่บันทึก (รวมครึ่งวัน) · คร่อมเดือน = นับวันทำการในเดือน
+      const mdays = inMonth.length===ds.length ? Number(l.days||0) : Math.min(inMonth.length, Number(l.days||0));
+      list.push({l,p,inMonth:inMonth.length,mdays});
       for(const d of inMonth){ if(!byDay.has(d)) byDay.set(d,[]); byDay.get(d).push({l,p}); }
     }
   }
@@ -1002,6 +1010,33 @@ function calDetailRows(items){
     <td>${thDate(l.start)}${l.end!==l.start?" – "+thDate(l.end):""}${halfTxt(l)?` <small class="muted">(${halfTxt(l)})</small>`:""}</td>
     <td class="num">${fmtN(l.days)}</td>
     <td style="white-space:normal;min-width:140px">${esc(l.note||"")}${l.docNo?`<br><small class="muted">เลขที่ ${esc(l.docNo)}</small>`:""}${!l.note&&!l.docNo?'<span class="muted">-</span>':""}</td></tr>`; }).join("");
+}
+// สรุปการลาแต่ละประเภทของเดือน (ไม่ขึ้นกับตัวกรองประเภท เพื่อเทียบกันได้ครบ)
+function calSummary(ym){
+  const A=calMonthData(ym,"all"), z=()=>({people:new Set(), n:0, days:0, emerg:0});
+  const by={sick:z(), personal:z(), vacation:z(), all:z()}, per=new Map();
+  for(const x of A.list){
+    for(const k of [x.l.kind,"all"]){ const b=by[k]; if(!b) continue; b.people.add(x.p._id); b.n++; b.days+=x.mdays; if(x.l.emergency) b.emerg++; }
+    if(!per.has(x.p._id)) per.set(x.p._id,{p:x.p, sick:0, personal:0, vacation:0, emerg:0, n:0});
+    const r=per.get(x.p._id); if(r[x.l.kind]!==undefined) r[x.l.kind]+=x.mdays; if(x.l.emergency) r.emerg++; r.n++;
+  }
+  const rows=[...per.values()].map(r=>({...r,total:r.sick+r.personal+r.vacation}))
+    .sort((a,b)=>b.total-a.total||(a.p.name||"").localeCompare(b.p.name||"","th"));
+  return {by, rows};
+}
+function calSummaryHtml(ym, monthLabel){
+  const {by, rows}=calSummary(ym), kf=S.calKind||"all";
+  const tile=(k,cls,lbl)=>{ const b=by[k]; return `<button type="button" class="stat ${cls} cx-tile ${kf===k?"on":""}" data-act="cal-kind" data-k="${k}" aria-pressed="${kf===k}" title="กดเพื่อกรองปฏิทินเฉพาะ${lbl}">
+    <span class="lbl"><i></i>${lbl}</span><span class="val">${fmtN(b.days)}<small>วัน</small></span>
+    <span class="lc-tsub">${b.people.size} คน · ${b.n} ครั้ง${k==="personal"&&b.emerg?` · ฉุกเฉิน ${b.emerg} ครั้ง`:""}</span></button>`; };
+  const cell=v=>v?`<td class="num">${fmtN(v)}</td>`:`<td class="num muted">-</td>`;
+  const tot=rows.reduce((a,r)=>({sick:a.sick+r.sick,personal:a.personal+r.personal,vacation:a.vacation+r.vacation,total:a.total+r.total}),{sick:0,personal:0,vacation:0,total:0});
+  return `<div class="stats lc-stats">${tile("all","all","ลารวมทุกประเภท")}${tile("sick","sick","ลาป่วย")}${tile("personal","per","ลากิจส่วนตัว")}${tile("vacation","vac","ลาพักผ่อน")}</div>
+  <details class="lc-per" ${S.calPerOpen?"open":""}><summary data-act="cal-per">สรุปรายบุคคลแยกประเภท ${monthLabel} <span class="muted">(${rows.length} คน)</span></summary>
+  ${!S.calPerOpen?"":rows.length?`<div class="tbl-wrap lc-per-tbl"><table><thead><tr><th>ชื่อ-สกุล</th><th>กลุ่มงาน</th><th class="num">ลาป่วย</th><th class="num">ลากิจส่วนตัว</th><th class="num">ลาพักผ่อน</th><th class="num">รวม (วัน)</th><th class="num">ครั้ง</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td><button class="linklike" data-act="person" data-id="${esc(r.p._id)}">${esc(r.p.name)}</button></td><td><small>${esc(groupOf(r.p)||"-")}</small></td>${cell(r.sick)}<td class="num">${r.personal?fmtN(r.personal)+(r.emerg?` <small class="muted">(ฉุกเฉิน ${r.emerg})</small>`:""):'<span class="muted">-</span>'}</td>${cell(r.vacation)}<td class="num"><b>${fmtN(r.total)}</b></td><td class="num">${r.n}</td></tr>`).join("")}
+    <tr class="lc-total"><td colspan="2"><b>รวม</b></td><td class="num"><b>${fmtN(tot.sick)}</b></td><td class="num"><b>${fmtN(tot.personal)}</b></td><td class="num"><b>${fmtN(tot.vacation)}</b></td><td class="num"><b>${fmtN(tot.total)}</b></td><td class="num"><b>${rows.reduce((a,r)=>a+r.n,0)}</b></td></tr>
+  </tbody></table></div>`:`<p class="muted">ไม่มีการลาในเดือนนี้</p>`}</details>`;
 }
 const CAL_HEAD = `<thead><tr><th>ชื่อ-สกุล</th><th>กลุ่มงาน/งาน</th><th>ประเภท</th><th>วันที่ลา</th><th class="num">วันทำการ</th><th>หมายเหตุ / เลขที่ใบลา</th></tr></thead>`;
 function viewCalendar(){
@@ -1021,7 +1056,7 @@ function viewCalendar(){
       <span class="lc-chips">${chips}${items.length>3?`<span class="lc-more">+${items.length-3}</span>`:""}</span></button>`;
   }
   const people=new Set(D.list.map(x=>x.p._id)).size;
-  const sum=k=>D.list.filter(x=>x.l.kind===k).reduce((s,x)=>s+Number(x.l.days||0),0);
+  const sum=k=>D.list.filter(x=>x.l.kind===k).reduce((s,x)=>s+x.mdays,0);
   const selItems=sel?(D.byDay.get(sel)||[]):[];
   const selTitle=sel?`${thDate(sel)}${hol.get(sel)?" · "+esc(hol.get(sel)):""}`:"";
   return `<div class="row"><h2 style="margin:0">ปฏิทินการลา</h2><span class="spacer"></span>
@@ -1031,7 +1066,8 @@ function viewCalendar(){
     <h3 class="lc-title">${TH_MONTHS_FULL[D.m-1]} ${D.y+543}</h3>
     <button class="ghost small" data-act="cal-nav" data-d="1" aria-label="เดือนถัดไป">›</button>
     <button class="ghost small" data-act="cal-nav" data-d="0">เดือนนี้</button><span class="spacer"></span>
-    <span class="muted lc-sum">ลา ${people} คน · ${D.list.length} รายการ · <span class="lc-dot k-sick"></span>ป่วย ${fmtN(sum("sick"))} · <span class="lc-dot k-per"></span>กิจ ${fmtN(sum("personal"))} · <span class="lc-dot k-vac"></span>พักผ่อน ${fmtN(sum("vacation"))} วัน</span></div>
+    <span class="muted lc-sum">ลา ${people} คน · ${D.list.length} รายการ${(S.calKind||"all")!=="all"?` · เฉพาะ${KINDS[S.calKind].label} ${fmtN(sum(S.calKind))} วัน`:""}</span></div>
+  ${calSummaryHtml(ym, `${TH_MONTHS_FULL[D.m-1]} ${D.y+543}`)}
   <div class="lc-grid" role="grid">${["อา.","จ.","อ.","พ.","พฤ.","ศ.","ส."].map((w,i)=>`<div class="lc-wd${i===0||i===6?" lc-off":""}">${w}</div>`).join("")}${cells}</div>
   ${sel?`<h3>ผู้ลาวันที่ ${selTitle} <span class="muted" style="font-weight:400">(${selItems.length} คน)</span></h3>
   ${selItems.length?`<div class="tbl-wrap"><table>${CAL_HEAD}<tbody>${calDetailRows(selItems)}</tbody></table></div>`:`<p class="muted">ไม่มีผู้ลาในวันนี้</p>`}`:""}
@@ -1098,6 +1134,8 @@ document.addEventListener("click", async ev => {
   if(a==="reset-close"){ S.resetFor=null; render(); return; }
   if(a==="preview"){ S.previewAs=id; render(); window.scrollTo(0,0); return; }
   if(a==="preview-close"){ S.previewAs=null; render(); return; }
+  if(a==="cal-kind"){ S.calKind=t.dataset.k==="all"?"all":t.dataset.k; render(); return; }
+  if(a==="cal-per"){ ev.preventDefault(); S.calPerOpen=!S.calPerOpen; render(); return; }
   if(a==="cal-nav"){ const n=Number(t.dataset.d); if(!n){ S.calYm=todayIso().slice(0,7); S.calDay=null; } else { const [y,m]=(S.calYm||todayIso().slice(0,7)).split("-").map(Number); const d=new Date(Date.UTC(y,m-1+n,1)); S.calYm=isoOf(d).slice(0,7); S.calDay=null; } render(); return; }
   if(a==="cal-day"){ S.calDay=t.dataset.d; render(); document.querySelector(".lc-grid")?.nextElementSibling?.scrollIntoView?.({behavior:"smooth",block:"nearest"}); return; }
   if(a==="cx-kind"){ S.cxKind=t.dataset.k; S.confirmKey=null; resetPages(); render(); return; }
