@@ -47,8 +47,21 @@
 
       // record leave, change dates after manual days override
       await click('[data-act="tab"][data-v="record"]');
-      const staffSel = $('#f_staff'); const bid = [...staffSel.options].find(o => /บานเย็น/.test(o.text)).value;
-      await setv('#f_staff', bid);
+      // ค้นหาบุคลากร: พิมพ์บางส่วนของชื่อ → เลือกด้วยแป้นลูกศร/Enter
+      $('#f_staff_q').focus(); await wait();
+      ok('staff search opens full list on focus', !$('#f_staff_list').hidden && document.querySelectorAll('#f_staff_list li[data-sp]').length === 3, document.querySelectorAll('#f_staff_list li[data-sp]').length);
+      await setv('#f_staff_q', 'ไม่มีชื่อนี้', 'input');
+      ok('staff search: no match message', /ไม่พบบุคลากร/.test($('#f_staff_list').innerText));
+      await setv('#f_staff_q', 'สุขภาพดิจิทัล', 'input');
+      ok('staff search by section', [...document.querySelectorAll('#f_staff_list li[data-sp]')].map(li => li.innerText).join('|').includes('บานเย็น') && document.querySelectorAll('#f_staff_list li[data-sp]').length === 1);
+      await setv('#f_staff_q', 'แก้ว', 'input');
+      ok('staff search by partial name', document.querySelectorAll('#f_staff_list li[data-sp]').length === 2 && !!$('#f_staff_list mark'));
+      const kd = k => $('#f_staff_q').dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+      const target = [...document.querySelectorAll('#f_staff_list li[data-sp]')].findIndex(li => /บานเย็น/.test(li.innerText));
+      for (let i = 0; i < target; i++) { kd('ArrowDown'); await wait(20); }
+      kd('Enter'); await wait();
+      const bid = $('#f_staff').value;
+      ok('staff picked with keyboard', /บานเย็น/.test($('#f_staff_q').value) && bid && $('#f_staff_list').hidden && /สุขภาพดิจิทัล/.test($('.sp-sel').innerText), $('.sp-sel') && $('.sp-sel').innerText);
       await setv('#f_start_txt', '02/11/2569'); await setv('#f_end_txt', '02/11/2569');
       await setv('#f_days', '1.', 'input');
       ok('typing "1." keeps field', $('#f_days').value === '' || $('#f_days').value === '1.' , JSON.stringify($('#f_days').value));

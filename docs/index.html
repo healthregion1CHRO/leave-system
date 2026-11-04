@@ -91,7 +91,7 @@ h3{font-family:var(--f-display);font-size:1.05rem;margin:0}
 .spacer{flex:1}
 .grid-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
 .field{display:flex;flex-direction:column;gap:6px;min-width:0}
-.field>span{font-size:.82rem;color:var(--muted);font-weight:500;letter-spacing:.01em}
+.field>span,.field>label{font-size:.82rem;color:var(--muted);font-weight:500;letter-spacing:.01em}
 .field.wide{grid-column:1/-1}
 
 /* stat tiles */
@@ -263,6 +263,19 @@ button.del-strong{background:var(--danger);color:#fff;border-color:var(--danger)
 .chip.is-on.per{background:var(--per-soft);border-color:var(--per-bar);color:var(--per)}
 .chip.is-on.vac{background:var(--vac-soft);border-color:var(--vac);color:var(--vac)}
 .chip.is-on.plain{background:var(--accent-soft);border-color:var(--accent)}
+.sp{position:relative}
+.sp-box{position:relative}
+.sp-box input{width:100%;padding-left:36px;padding-right:40px}
+.sp-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:1.1rem;pointer-events:none}
+.sp-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);padding:4px 8px;cursor:pointer;box-shadow:none}
+.sp-clear:hover{color:var(--danger)}
+.sp-list{position:absolute;z-index:30;left:0;right:0;top:calc(100% + 4px);margin:0;padding:4px;list-style:none;max-height:320px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg,0 12px 30px rgba(0,0,0,.15))}
+.sp-list li{display:flex;flex-direction:column;gap:1px;padding:8px 12px;border-radius:8px;cursor:pointer;line-height:1.35}
+.sp-list li small{color:var(--muted);font-size:.82rem}
+.sp-list li[aria-selected="true"],.sp-list li[data-sp]:hover{background:var(--accent-soft)}
+.sp-list li.sp-none,.sp-list li.sp-more{cursor:default;color:var(--muted);font-size:.85rem}
+.sp-list mark{background:transparent;color:var(--accent-strong,var(--accent));font-weight:700}
+.sp-sel{color:var(--muted);margin-top:4px;display:block}
 </style>
 <style>html,body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
 </head>
@@ -698,6 +711,36 @@ function viewPerson(){
   ${leaveTable(pp, S.fy, true)}`;
 }
 
+// ---------- ช่องค้นหาและเลือกบุคลากร (หน้าบันทึกการลา) ----------
+const SP = { idx: 0, items: [], quiet: false };
+function spNorm(x){ return String(x||"").toLowerCase().replace(/\s+/g," ").trim(); }
+function spFilter(q){
+  const L = staffList(); q = spNorm(q);
+  if(!q) return L;
+  const words = q.split(" ");
+  return L.filter(s=>{ const t=spNorm(`${s.name} ${s.position||""} ${s.level||""} ${s.group||""} ${s.section||""}`); return words.every(w=>t.includes(w)); });
+}
+function spHi(text, q){
+  const t=String(text||""), w=spNorm(q).split(" ").filter(Boolean).sort((a,b)=>b.length-a.length)[0];
+  if(!w) return esc(t); const i=t.toLowerCase().indexOf(w); if(i<0) return esc(t);
+  return esc(t.slice(0,i))+"<mark>"+esc(t.slice(i,i+w.length))+"</mark>"+esc(t.slice(i+w.length));
+}
+function spOpen(q){
+  const box=document.getElementById("f_staff_list"), inp=document.getElementById("f_staff_q"); if(!box||!inp) return;
+  const all=spFilter(q); SP.items=all.slice(0,60); SP.idx=Math.min(SP.idx, Math.max(0,SP.items.length-1));
+  box.innerHTML = SP.items.length
+    ? SP.items.map((s,i)=>`<li role="option" id="sp_${i}" data-sp="${esc(s._id)}" aria-selected="${i===SP.idx}"><b>${spHi(s.name,q)}</b><small>${spHi([posLine(s),orgLine(s)].filter(Boolean).join(" · "),q)}</small></li>`).join("")
+      + (all.length>SP.items.length?`<li class="sp-more" aria-disabled="true">พบ ${all.length} คน แสดง ${SP.items.length} คนแรก พิมพ์เพิ่มเพื่อค้นหาให้แคบลง</li>`:"")
+    : `<li class="sp-none" aria-disabled="true">ไม่พบบุคลากรที่ตรงกับ “${esc(q)}”</li>`;
+  box.hidden=false; inp.setAttribute("aria-expanded","true");
+  if(SP.items.length) inp.setAttribute("aria-activedescendant","sp_"+SP.idx); else inp.removeAttribute("aria-activedescendant");
+  document.getElementById("sp_"+SP.idx)?.scrollIntoView({block:"nearest"});
+}
+function spClose(){ const box=document.getElementById("f_staff_list"), inp=document.getElementById("f_staff_q"); if(box) box.hidden=true; if(inp){ inp.setAttribute("aria-expanded","false"); inp.removeAttribute("aria-activedescendant"); } }
+function spPick(id){
+  readDraft(); S.draft.staffId=id; S.draft.daysOverride=""; spClose(); SP.quiet=true; render(); setTimeout(()=>{ SP.quiet=false; },0);
+  if(!id) document.getElementById("f_staff_q")?.focus();
+}
 function viewRecord(){
   const list = staffList();
   if(!list.length) return `<div class="panel empty"><h3>ต้องมีรายชื่อบุคลากรก่อนบันทึกการลา</h3><button class="primary" data-act="tab" data-v="staff">ไปที่รายชื่อบุคลากร</button></div>`;
@@ -716,12 +759,20 @@ function viewRecord(){
       + (overlap?`<div class="notice warn">ช่วงวันที่ซ้อนกับรายการเดิม: ${(KINDS[overlap.kind]||{label:"การลา"}).label} ${thDate(overlap.start)} – ${thDate(overlap.end)}</div>`:"")
       + (d.start && d.end && fyOf(d.start)!==fyOf(d.end)?`<div class="notice warn">ช่วงลาคร่อมสองปีงบประมาณ ควรแยกบันทึกเป็นสองรายการ</div>`:"");
   }
-  const opts = list.map(s=>`<option value="${esc(s._id)}" ${d.staffId===s._id?"selected":""}>${esc(s.name)}${posLine(s)?" — "+esc(posLine(s)):""}</option>`).join("");
+  const sel = d.staffId ? list.find(s=>s._id===d.staffId) : null;
+  const selInfo = sel ? [posLine(sel), orgLine(sel)].filter(Boolean).join(" · ") : "";
   const single = d.start && d.start===d.end;
   return `<h2>บันทึกการลา</h2>
   <form class="panel" id="leaveForm" style="display:flex;flex-direction:column;gap:16px">
     <div class="grid-form">
-      <label class="field wide"><span>บุคลากร</span><select id="f_staff" required><option value="">— เลือกบุคลากร —</option>${opts}</select></label>
+      <div class="field wide sp"><label for="f_staff_q">บุคลากร</label>
+        <input type="hidden" id="f_staff" value="${esc(d.staffId||"")}">
+        <div class="sp-box"><span class="sp-ic" aria-hidden="true">⌕</span>
+          <input id="f_staff_q" type="text" role="combobox" aria-expanded="false" aria-controls="f_staff_list" aria-autocomplete="list" autocomplete="off" spellcheck="false"
+            placeholder="พิมพ์ชื่อ ตำแหน่ง หรือกลุ่มงาน เพื่อค้นหาบุคลากร (${list.length} คน)" value="${sel?esc(sel.name):""}">
+          ${sel?`<button type="button" class="sp-clear" data-act="sp-clear" aria-label="ล้างการเลือกบุคลากร">✕</button>`:""}
+          <ul id="f_staff_list" class="sp-list" role="listbox" aria-label="รายชื่อบุคลากร" hidden></ul></div>
+        ${sel?`<small class="sp-sel">${esc(selInfo||"เลือกแล้ว")}</small>`:""}</div>
       <div class="field wide"><span>ประเภทการลา</span><div class="chips">
         ${Object.entries(KINDS).map(([k,v])=>`<label class="chip ${k==="sick"?"sick":k==="vacation"?"vac":"per"}"><input type="radio" name="f_kind" value="${k}" ${d.kind===k?"checked":""}>${v.label}</label>`).join("")}
         ${d.kind==="personal"?`<label class="chip plain"><input type="checkbox" id="f_emerg" ${d.emergency?"checked":""}>ลากิจฉุกเฉิน (ยื่นใบลาภายหลัง)</label>`:""}
@@ -964,6 +1015,7 @@ document.addEventListener("click", async ev => {
     S.confirmKey=null; try{ await call("restoreLeave", id); toast("คืนสถานะรายการลาแล้ว"); }catch(e){}
   }
   else if(a==="cancel"){ S.confirmKey=null; render(); }
+  else if(a==="sp-clear"){ spPick(""); }
   else if(a==="del-leave"){
     S.confirmKey=null; try{ await call("deleteLeave", id); toast("ลบรายการลาแล้ว"); }catch(e){}
   }
@@ -1000,7 +1052,24 @@ document.addEventListener("click", async ev => {
   else if(a==="del-hol"){ try{ await call("deleteHoliday", t.dataset.d); toast("ลบวันหยุดแล้ว"); }catch(e){} }
   else if(a==="csv"){ exportCsv(); }
 });
-document.addEventListener("keydown", ev => { if(ev.key==="Escape" && S.tdp){ S.tdp=null; render(); return; } if(ev.key==="Escape" && (S.delStaff||S.editStaff||S.resetFor||S.pwModal)){ if(S.pwModal) S.pwModal=null; else if(S.delStaff) S.delStaff=null; else if(S.resetFor) S.resetFor=null; else S.editStaff=null; render(); return; } if(ev.key==="Enter" && ev.target.matches("tr[data-act]")) ev.target.click(); });
+document.addEventListener("focusin", ev => { if(ev.target.id==="f_staff_q" && !SP.quiet){ SP.idx=0; ev.target.select(); spOpen(""); } });
+document.addEventListener("focusout", ev => {
+  if(ev.target.id!=="f_staff_q") return;
+  setTimeout(()=>{ const inp=document.getElementById("f_staff_q"); if(!inp || document.activeElement===inp) return; spClose();
+    const cur=S.draft&&S.draft.staffId ? S.staff.get(S.draft.staffId) : null;
+    if(!inp.value.trim() && cur) spPick(""); else inp.value = cur ? cur.name : ""; }, 150);
+});
+document.addEventListener("mousedown", ev => { if(ev.target.id==="f_staff_q" && document.activeElement===ev.target && document.getElementById("f_staff_list")?.hidden){ SP.idx=0; spOpen(""); }
+  const li=ev.target.closest&&ev.target.closest("#f_staff_list li[data-sp]"); if(li){ ev.preventDefault(); spPick(li.dataset.sp); } });
+document.addEventListener("keydown", ev => {
+  if(ev.target.id==="f_staff_q"){
+    const box=document.getElementById("f_staff_list"); const open=box&&!box.hidden;
+    if(ev.key==="ArrowDown"||ev.key==="ArrowUp"){ ev.preventDefault(); if(!open){ spOpen(ev.target.value); return; } if(!SP.items.length) return;
+      SP.idx=(SP.idx+(ev.key==="ArrowDown"?1:-1)+SP.items.length)%SP.items.length; spOpen(ev.target.value); return; }
+    if(ev.key==="Enter"){ ev.preventDefault(); if(open && SP.items[SP.idx]) spPick(SP.items[SP.idx]._id); return; }
+    if(ev.key==="Escape" && open){ ev.preventDefault(); ev.stopPropagation(); spClose(); return; }
+  }
+ if(ev.key==="Escape" && S.tdp){ S.tdp=null; render(); return; } if(ev.key==="Escape" && (S.delStaff||S.editStaff||S.resetFor||S.pwModal)){ if(S.pwModal) S.pwModal=null; else if(S.delStaff) S.delStaff=null; else if(S.resetFor) S.resetFor=null; else S.editStaff=null; render(); return; } if(ev.key==="Enter" && ev.target.matches("tr[data-act]")) ev.target.click(); });
 $fy.addEventListener("change", () => { S.fy = Number($fy.value); render(); });
 
 function readDraft(){
@@ -1037,6 +1106,7 @@ function captureStaffForm(){
 }
 document.addEventListener("change", ev => {
   const id = ev.target.id || ev.target.name;
+  if(id==="f_staff_q") return; // ช่องค้นหาบุคลากร จัดการเองใน spOpen/spPick
   if(S.view==="record" && /^f_/.test(id)){
     readDraft();
     if(["f_start_txt","f_end_txt","f_half","f_kind","f_staff","f_emerg"].includes(id)){ S.draft.daysOverride=""; const fd=document.getElementById("f_days"); if(fd) fd.value=""; }
@@ -1071,6 +1141,7 @@ document.addEventListener("input", ev => {
   else if(id==="aq"){ S.aq=ev.target.value; resetPages(); render(); }
   else if(id==="cxq"){ S.cxQ=ev.target.value; resetPages(); render(); }
   else if(id==="lg_user"){ S.lgUser=ev.target.value; }
+  else if(id==="f_staff_q"){ SP.idx=0; spOpen(ev.target.value); }
   else if(id==="h_n"){ S.hn=ev.target.value; }
   else if(S.view==="record" && (id==="f_note"||id==="f_doc"||id==="f_days")){ readDraft(); if(id==="f_days") refreshCalc(); }
 
