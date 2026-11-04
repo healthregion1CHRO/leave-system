@@ -10,6 +10,9 @@
 | `apps-script/` | เวอร์ชันหลัก: Google Sheets + Apps Script (ล็อกอินด้วยชื่อ-นามสกุล + เลขบัตรประชาชน) |
 | `tests/` | ชุดทดสอบก่อนขึ้น GitHub (ดูหัวข้อ "ทดสอบก่อนขึ้น GitHub") |
 | `docs/install-guide.html` | คู่มือติดตั้งเวอร์ชัน Apps Script ทีละขั้นตอน |
+| `docs/config.js` | ลิงก์ `/exec` ของ Apps Script ที่หน้าเว็บบน GitHub Pages เรียกใช้ |
+| `tools/build-pages.js` | สร้างหน้าเว็บ GitHub Pages จาก `apps-script/Index.html` (GitHub Actions เรียกให้เอง) |
+| `.github/workflows/pages.yml` | push ขึ้น `main` → ทดสอบ → ขึ้นหน้าเว็บอัตโนมัติ |
 
 ## ติดตั้งเวอร์ชัน Apps Script (สรุป)
 
@@ -77,3 +80,17 @@ powershell -ExecutionPolicy Bypass -File tests\run-tests.ps1
 ## หมายเหตุ
 
 ค่าสิทธิ์การลาเริ่มต้นของพนักงานราชการ / พกส. / ลูกจ้างชั่วคราว เป็นค่าประมาณ กรุณาตรวจสอบกับระเบียบที่หน่วยงานใช้จริง
+
+## แก้ไฟล์เดียว ระบบอัปเดตเองทั้งหมด
+
+แก้หน้าเว็บที่ `apps-script/Index.html` ไฟล์เดียว (ไม่ต้องแก้หรือคัดลอกไป `docs/index.html` อีก)
+
+| ส่วน | อัปเดตอย่างไร |
+|---|---|
+| หน้าเว็บ GitHub Pages | GitHub Actions รันชุดทดสอบ ถ้าผ่านจะสร้างหน้าเว็บจาก `apps-script/Index.html` + `docs/config.js` แล้วขึ้นเว็บเอง (~2–3 นาที) ถ้าทดสอบไม่ผ่านจะไม่ขึ้นเว็บ และหน้าเดิมยังใช้งานได้ |
+| ลิงก์ `/exec` ของ Apps Script | ตัวอัปเดตอัตโนมัติดึง `Code.gs` / `Index.html` / `appsscript.json` จาก `main` แล้ว Deploy เอง (~10 นาที) |
+
+ตั้งค่าครั้งเดียว: **Settings → Pages → Build and deployment → Source: GitHub Actions**
+ดูผลแต่ละรอบได้ที่แท็บ **Actions** (เครื่องหมาย ✓ เขียว = ขึ้นเว็บแล้ว, ✗ แดง = ทดสอบไม่ผ่าน กดเข้าไปดูข้อที่ FAIL)
+
+ทดสอบในเครื่องก่อน push (Windows/Mac/Linux): `npm i --no-save playwright && npx playwright install chromium && node tests/run-tests.js`
