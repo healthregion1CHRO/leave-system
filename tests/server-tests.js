@@ -102,6 +102,17 @@ window.runServerTests = function () {
     ok('restore active rejected', throws(() => A.restoreLeave(T, lv.id), /ไม่ได้ถูกยกเลิก/));
     ok('API exposes cancel/restore', !!A.apiFn_('cancelLeave') && !!A.apiFn_('restoreLeave'));
 
+    // 7b2. staffId ในชีตการลาถูกวางข้อความทับ → login ครั้งถัดไปผูกกลับด้วยชื่อ
+    const lr = rows('การลา').findIndex(r => r[0] === lv.id);
+    const realId = rows('การลา')[lr][1];
+    rows('การลา')[lr][1] = '2. ที่ไฟล์ Code.gs กด Ctrl+A';
+    ok('broken staffId hides leave', !A.bootstrap(A.login('มณีรัตน์ สมสุข', sCid).token).data.leaves.some(x => x.id === lv.id) || rows('การลา')[lr][1] === realId);
+    ok('login repairs broken staffId by name', rows('การลา')[lr][1] === realId, rows('การลา')[lr][1]);
+    rows('การลา')[lr][1] = 'sdeadbeef'; rows('การลา')[lr][2] = 'ไม่มีคนนี้';
+    A.login('มณีรัตน์ สมสุข', sCid);
+    ok('unknown name left untouched', rows('การลา')[lr][1] === 'sdeadbeef');
+    rows('การลา')[lr][1] = realId; rows('การลา')[lr][2] = 'นางสาวมณีรัตน์ สมสุข';
+
     // 7c. ยกเลิกเฉพาะบางวัน: 16–27 พ.ย. 69 (จ.–ศ. 2 สัปดาห์) วันหยุด 20 พ.ย. → 9 วันทำการ
     A.addHoliday(T, '2026-11-20', 'ทดสอบ');
     d = A.addLeave(T, { staffId: st.id, kind: 'vacation', start: '2026-11-16', end: '2026-11-27', days: 9, note: '=ไปต่างจังหวัด', docNo: '12/2569' }).data;
