@@ -254,6 +254,32 @@ button.icon-btn{display:inline-flex;align-items:center;gap:6px}
 .modal .m-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px}
 .modal .m-foot{display:flex;gap:10px;justify-content:flex-end;padding:14px 22px;border-top:1px solid var(--line);background:var(--surface-2)}
 button.del-strong{background:var(--danger);color:#fff;border-color:var(--danger);font-weight:600}
+/* ปฏิทินการลา */
+.lc-f{display:inline-flex;align-items:center;gap:6px;font-size:.9rem;color:var(--muted)}
+.lc-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0 10px}
+.lc-title{margin:0 6px;min-width:150px;text-align:center}
+.lc-sum{font-size:.85rem;display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px}
+.lc-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:6px}
+.lc-dot.k-sick{background:var(--sick)} .lc-dot.k-per{background:var(--per-bar)} .lc-dot.k-vac{background:var(--vac)}
+.lc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px;box-shadow:var(--shadow)}
+.lc-wd{text-align:center;font-size:.8rem;font-weight:600;color:var(--muted);padding:4px 0}
+.lc-cell{display:flex;flex-direction:column;align-items:stretch;gap:3px;min-height:92px;padding:6px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:inherit;font:inherit;text-align:left;cursor:pointer;min-width:0}
+.lc-cell:hover{border-color:var(--muted)}
+.lc-empty{background:transparent;border-color:transparent;cursor:default}
+.lc-off,.lc-hol{background:var(--surface-2)}
+.lc-wd.lc-off{background:transparent;color:var(--sick)}
+.lc-today{border-color:var(--accent);border-width:2px}
+.lc-sel{outline:2px solid var(--accent);outline-offset:1px;background:var(--accent-soft)}
+.lc-num{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-variant-numeric:tabular-nums}
+.lc-off .lc-num,.lc-hol .lc-num{color:var(--sick)}
+.lc-count{font-size:.72rem;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:0 7px;line-height:1.5}
+.lc-holname{font-size:.68rem;color:var(--sick);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lc-chips{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lc-chip{font-size:.72rem;border-radius:6px;padding:1px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.lc-more{font-size:.7rem;color:var(--muted)}
+.linklike{border:0;background:none;padding:0;color:var(--accent-strong);font:inherit;font-weight:600;cursor:pointer;text-align:left}
+.linklike:hover{text-decoration:underline}
+@media (max-width:640px){.lc-cell{min-height:56px;padding:4px}.lc-chips,.lc-holname{display:none}.lc-num{flex-direction:column;align-items:flex-start;gap:2px}.lc-grid{gap:2px;padding:4px}}
 @media (max-width:560px){header.top{position:static}th,td{padding:10px}.bal .big{font-size:2rem}.ring{width:80px;height:80px}.ring span{width:60px;height:60px}.brand h1{font-size:1.15rem}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 .cx-tile{text-align:left;cursor:pointer;font:inherit;color:inherit}
@@ -521,7 +547,7 @@ function fyOptions(){
   $fy.innerHTML = list.map(f=>`<option value="${f}" ${f===S.fy?"selected":""}>${f}</option>`).join("");
 }
 function tabsHtml(){
-  const t = [["summary","สรุปรายบุคคล"],["record","บันทึกการลา"],["staff","รายชื่อบุคลากร"],["cancel","ยกเลิกวันลา"],["accounts","บัญชีผู้ใช้"],["settings","ตั้งค่าสิทธิ์และวันหยุด"]];
+  const t = [["summary","สรุปรายบุคคล"],["calendar","ปฏิทินการลา"],["record","บันทึกการลา"],["staff","รายชื่อบุคลากร"],["cancel","ยกเลิกวันลา"],["accounts","บัญชีผู้ใช้"],["settings","ตั้งค่าสิทธิ์และวันหยุด"]];
   return t.map(([k,l])=>`<button data-act="tab" data-v="${k}" ${S.view===k||(S.view==="person"&&k==="summary")?'aria-current="page"':""}>${l}</button>`).join("");
 }
 function usageCell(b, kind){
@@ -947,6 +973,73 @@ function viewSettings(){
   </tbody></table></div>`;
 }
 
+// ---------- ปฏิทินการลา (HR): ใครลาวันไหน + รายละเอียด ----------
+const shortName = n => String(n||"").replace(/^(นางสาว|นาย|นาง|น\.ส\.)\s*/,"").trim().split(/\s+/)[0] || "-";
+const halfTxt = l => l.half&&l.half!=="full" ? (l.half==="am"?"ครึ่งเช้า":"ครึ่งบ่าย") : "";
+function calMonthData(ym){
+  const [y,m]=ym.split("-").map(Number), dim=new Date(Date.UTC(y,m,0)).getUTCDate();
+  const from=`${ym}-01`, to=`${ym}-${String(dim).padStart(2,"0")}`, kf=S.calKind||"all", gf=S.calGroup||"";
+  const byDay=new Map(), list=[];
+  for(const p of staffList()){
+    if(gf && groupOf(p)!==gf) continue;
+    for(const l of p.leaves||[]){
+      if(kf!=="all" && l.kind!==kf) continue;
+      if(l.end<from || l.start>to) continue;
+      let ds=leaveWorkDates(l); if(!ds.length) ds=[l.start];
+      const inMonth=ds.filter(d=>d>=from && d<=to); if(!inMonth.length) continue;
+      list.push({l,p,inMonth:inMonth.length});
+      for(const d of inMonth){ if(!byDay.has(d)) byDay.set(d,[]); byDay.get(d).push({l,p}); }
+    }
+  }
+  list.sort((a,b)=>a.l.start.localeCompare(b.l.start)||(a.p.name||"").localeCompare(b.p.name||"","th"));
+  return {y,m,dim,from,to,byDay,list};
+}
+function calDetailRows(items){
+  return items.map(({l,p})=>{ const K=KINDS[l.kind]||{cls:"neutral",label:esc(l.kind||"?")};
+    return `<tr><td><button class="linklike" data-act="person" data-id="${esc(p._id)}">${esc(p.name)}</button><br><small class="muted">${esc(posLine(p)||"-")}</small></td>
+    <td><small>${esc(groupOf(p)||"-")}${p.section?"<br>"+esc(p.section):""}</small></td>
+    <td><span class="pill ${K.cls}">${K.label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}</td>
+    <td>${thDate(l.start)}${l.end!==l.start?" – "+thDate(l.end):""}${halfTxt(l)?` <small class="muted">(${halfTxt(l)})</small>`:""}</td>
+    <td class="num">${fmtN(l.days)}</td>
+    <td style="white-space:normal;min-width:140px">${esc(l.note||"")}${l.docNo?`<br><small class="muted">เลขที่ ${esc(l.docNo)}</small>`:""}${!l.note&&!l.docNo?'<span class="muted">-</span>':""}</td></tr>`; }).join("");
+}
+const CAL_HEAD = `<thead><tr><th>ชื่อ-สกุล</th><th>กลุ่มงาน/งาน</th><th>ประเภท</th><th>วันที่ลา</th><th class="num">วันทำการ</th><th>หมายเหตุ / เลขที่ใบลา</th></tr></thead>`;
+function viewCalendar(){
+  const ym=S.calYm||todayIso().slice(0,7), D=calMonthData(ym), today=todayIso();
+  const hol=new Map((S.config.holidays||[]).map(h=>[h.d,h.n]));
+  const sel=S.calDay && S.calDay.startsWith(ym) ? S.calDay : (today.startsWith(ym)?today:null);
+  const groups=[...new Set(staffList().map(groupOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"th"));
+  const startWd=new Date(Date.UTC(D.y,D.m-1,1)).getUTCDay();
+  let cells="";
+  for(let i=0;i<startWd;i++) cells+=`<div class="lc-cell lc-empty" aria-hidden="true"></div>`;
+  for(let d=1; d<=D.dim; d++){
+    const iso=`${ym}-${String(d).padStart(2,"0")}`, wd=(startWd+d-1)%7, items=D.byDay.get(iso)||[], h=hol.get(iso);
+    const cls=["lc-cell", wd===0||wd===6?"lc-off":"", h?"lc-hol":"", iso===today?"lc-today":"", iso===sel?"lc-sel":""].filter(Boolean).join(" ");
+    const chips=items.slice(0,3).map(({l,p})=>`<span class="lc-chip ${(KINDS[l.kind]||{}).cls||""}" title="${esc(p.name)} · ${(KINDS[l.kind]||{}).label||""}">${esc(shortName(p.name))}${halfTxt(l)?" ½":""}</span>`).join("");
+    cells+=`<button type="button" class="${cls}" data-act="cal-day" data-d="${iso}" aria-label="${d} ${TH_MONTHS_FULL[D.m-1]}${h?" "+esc(h):""} ลา ${items.length} คน"${iso===sel?' aria-pressed="true"':""}>
+      <span class="lc-num">${d}${items.length?`<b class="lc-count">${items.length}</b>`:""}</span>${h?`<span class="lc-holname">${esc(h)}</span>`:""}
+      <span class="lc-chips">${chips}${items.length>3?`<span class="lc-more">+${items.length-3}</span>`:""}</span></button>`;
+  }
+  const people=new Set(D.list.map(x=>x.p._id)).size;
+  const sum=k=>D.list.filter(x=>x.l.kind===k).reduce((s,x)=>s+Number(x.l.days||0),0);
+  const selItems=sel?(D.byDay.get(sel)||[]):[];
+  const selTitle=sel?`${thDate(sel)}${hol.get(sel)?" · "+esc(hol.get(sel)):""}`:"";
+  return `<div class="row"><h2 style="margin:0">ปฏิทินการลา</h2><span class="spacer"></span>
+    <label class="lc-f">ประเภท <select id="cal_kind"><option value="all">ทุกประเภท</option>${Object.entries(KINDS).map(([k,v])=>`<option value="${k}" ${S.calKind===k?"selected":""}>${v.label}</option>`).join("")}</select></label>
+    <label class="lc-f">กลุ่มงาน <select id="cal_group"><option value="">ทุกกลุ่มงาน</option>${groups.map(g=>`<option ${S.calGroup===g?"selected":""}>${esc(g)}</option>`).join("")}</select></label></div>
+  <div class="lc-bar"><button class="ghost small" data-act="cal-nav" data-d="-1" aria-label="เดือนก่อน">‹</button>
+    <h3 class="lc-title">${TH_MONTHS_FULL[D.m-1]} ${D.y+543}</h3>
+    <button class="ghost small" data-act="cal-nav" data-d="1" aria-label="เดือนถัดไป">›</button>
+    <button class="ghost small" data-act="cal-nav" data-d="0">เดือนนี้</button><span class="spacer"></span>
+    <span class="muted lc-sum">ลา ${people} คน · ${D.list.length} รายการ · <span class="lc-dot k-sick"></span>ป่วย ${fmtN(sum("sick"))} · <span class="lc-dot k-per"></span>กิจ ${fmtN(sum("personal"))} · <span class="lc-dot k-vac"></span>พักผ่อน ${fmtN(sum("vacation"))} วัน</span></div>
+  <div class="lc-grid" role="grid">${["อา.","จ.","อ.","พ.","พฤ.","ศ.","ส."].map((w,i)=>`<div class="lc-wd${i===0||i===6?" lc-off":""}">${w}</div>`).join("")}${cells}</div>
+  ${sel?`<h3>ผู้ลาวันที่ ${selTitle} <span class="muted" style="font-weight:400">(${selItems.length} คน)</span></h3>
+  ${selItems.length?`<div class="tbl-wrap"><table>${CAL_HEAD}<tbody>${calDetailRows(selItems)}</tbody></table></div>`:`<p class="muted">ไม่มีผู้ลาในวันนี้</p>`}`:""}
+  <h3>รายการลาทั้งเดือน ${TH_MONTHS_FULL[D.m-1]} ${D.y+543}</h3>
+  ${D.list.length?`<div class="tbl-wrap"><table>${CAL_HEAD}<tbody>${calDetailRows(D.list)}</tbody></table></div>`:`<p class="muted">ไม่มีรายการลาในเดือนนี้</p>`}
+  <p class="muted" style="font-size:.85rem">แสดงเฉพาะวันทำการ (ไม่รวมเสาร์-อาทิตย์และวันหยุดราชการ) · ไม่รวมรายการที่ยกเลิกแล้ว · กดที่วันเพื่อดูรายละเอียด กดชื่อเพื่อดูสรุปรายบุคคล</p>`;
+}
+
 function viewMine(){
   if(S.myDoc===undefined) return `<div class="panel empty"><h3>กำลังโหลดข้อมูลการลาของคุณ…</h3></div>`;
   if(!S.myDoc) return `<div class="panel empty"><h3>ยังไม่พบข้อมูลการลาของคุณ</h3>
@@ -976,7 +1069,7 @@ function render(){
   document.getElementById("roleLine").textContent = S.isHR ? "โหมดเจ้าหน้าที่ HR · บันทึกและดูการลาของบุคลากรทุกคน" : "การลาของฉัน · แสดงเฉพาะข้อมูลของคุณ";
   if(S.isHR){
     $tabs.hidden=false; $tabs.innerHTML = tabsHtml();
-    $app.innerHTML = ({summary:viewSummary, person:viewPerson, record:viewRecord, staff:viewStaff, cancel:viewCancel, accounts:viewAccounts, settings:viewSettings}[S.view]||viewSummary)();
+    $app.innerHTML = ({summary:viewSummary, calendar:viewCalendar, person:viewPerson, record:viewRecord, staff:viewStaff, cancel:viewCancel, accounts:viewAccounts, settings:viewSettings}[S.view]||viewSummary)();
   } else {
     $tabs.hidden=true; $app.innerHTML = viewMine();
   }
@@ -1005,6 +1098,8 @@ document.addEventListener("click", async ev => {
   if(a==="reset-close"){ S.resetFor=null; render(); return; }
   if(a==="preview"){ S.previewAs=id; render(); window.scrollTo(0,0); return; }
   if(a==="preview-close"){ S.previewAs=null; render(); return; }
+  if(a==="cal-nav"){ const n=Number(t.dataset.d); if(!n){ S.calYm=todayIso().slice(0,7); S.calDay=null; } else { const [y,m]=(S.calYm||todayIso().slice(0,7)).split("-").map(Number); const d=new Date(Date.UTC(y,m-1+n,1)); S.calYm=isoOf(d).slice(0,7); S.calDay=null; } render(); return; }
+  if(a==="cal-day"){ S.calDay=t.dataset.d; render(); document.querySelector(".lc-grid")?.nextElementSibling?.scrollIntoView?.({behavior:"smooth",block:"nearest"}); return; }
   if(a==="cx-kind"){ S.cxKind=t.dataset.k; S.confirmKey=null; resetPages(); render(); return; }
   if(a==="tab"){ S.view=t.dataset.v; S.confirmKey=null; S.previewAs=null; S.editType=null; S.typeDraft=null;if(S.view!=="staff") S.editStaff=null; render(); window.scrollTo(0,0); }
   else if(a==="person"){ S.personId=id; S.view="person"; S.confirmKey=null; render(); window.scrollTo(0,0); }
@@ -1107,6 +1202,8 @@ function captureStaffForm(){
 document.addEventListener("change", ev => {
   const id = ev.target.id || ev.target.name;
   if(id==="f_staff_q") return; // ช่องค้นหาบุคลากร จัดการเองใน spOpen/spPick
+  if(id==="cal_kind"){ S.calKind=ev.target.value; render(); return; }
+  if(id==="cal_group"){ S.calGroup=ev.target.value; render(); return; }
   if(S.view==="record" && /^f_/.test(id)){
     readDraft();
     if(["f_start_txt","f_end_txt","f_half","f_kind","f_staff","f_emerg"].includes(id)){ S.draft.daysOverride=""; const fd=document.getElementById("f_days"); if(fd) fd.value=""; }

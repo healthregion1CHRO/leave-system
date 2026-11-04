@@ -92,6 +92,22 @@
       await click('#leaveForm button[type=submit]'); await wait(200);
       ok('save works while calendar open', leaves().length === 3, leaves().length);
 
+      // ปฏิทินการลา: เลื่อนไป พ.ย. 2569 (2–4 พ.ย. 3 วัน + 5 พ.ย. ครึ่งเช้า + 6 พ.ย.)
+      await click('[data-act="tab"][data-v="calendar"]');
+      ok('calendar tab shows month grid', !!$('.lc-grid') && document.querySelectorAll('.lc-wd').length === 7);
+      const now = new Date(), diff = (2026 * 12 + 10) - (now.getFullYear() * 12 + now.getMonth());
+      for (let i = 0; i < Math.abs(diff); i++) await click(`[data-act="cal-nav"][data-d="${diff > 0 ? 1 : -1}"]`);
+      ok('calendar shows พฤศจิกายน 2569', /พฤศจิกายน 2569/.test($('.lc-title').innerText), $('.lc-title').innerText);
+      const cell = d => $(`[data-act="cal-day"][data-d="${d}"]`);
+      ok('leave days marked on grid', /\b1\b/.test(cell('2026-11-03').querySelector('.lc-count')?.innerText || '') && !!cell('2026-11-05').querySelector('.lc-chip'), cell('2026-11-03').innerText);
+      ok('weekend not marked', !cell('2026-11-07').querySelector('.lc-count'));
+      await click(cell('2026-11-05'));
+      ok('day detail lists person with half-day', /ผู้ลาวันที่ 5 พ.ย. 2569/.test(text()) && /ครึ่งเช้า/.test(text()));
+      ok('month list has 3 leaves', document.querySelectorAll('.tbl-wrap')[1]?.querySelectorAll('tbody tr').length === 3);
+      await setv('#cal_kind', 'vacation');
+      ok('kind filter hides sick leave', !cell('2026-11-03').querySelector('.lc-count'));
+      await setv('#cal_kind', 'all');
+
       // edit staff with section not in ORG → unchanged
       await click('[data-act="tab"][data-v="staff"]');
       const kid = staffRow('นายกิตติ ก้อนแก้ว')[0];
