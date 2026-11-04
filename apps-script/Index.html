@@ -186,6 +186,9 @@ td.num,th.num{text-align:right}
 .person-head h2{font-size:1.5rem}
 .confirm{display:inline-flex;gap:6px;align-items:center}
 .cxl-form{flex-wrap:wrap}.cxl-form input{min-width:200px;padding:5px 8px}
+.cxl-range{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;width:100%;font-size:.88rem}
+.cxl-range label{display:inline-flex;align-items:center;gap:6px}.cxl-range select{padding:4px 6px}
+.cxl-days{color:var(--muted)}.cxl-days.bad{color:var(--danger)}
 tr.cancelled td.strike{text-decoration:line-through;color:var(--muted)}
 .cxl-note{color:var(--danger)}
 .ico{width:16px;height:16px;flex:0 0 auto}
@@ -512,6 +515,41 @@ function usageCell(b, kind){
   const over = b.used > b.quota;
   return `<div class="usage ${over?"over":""}"><span class="t">${fmtN(b.used)} / ${fmtN(b.quota)}</span><span class="bar"><i style="width:${pct}%;background:${KINDS[kind].color}"></i></span><span class="cum">สะสมทุกปี ${fmtN(b.cum)} วัน</span></div>`;
 }
+// ---------- ฟอร์มยกเลิกวันลา: ระบุช่วงวันที่ที่จะยกเลิกได้ (ค่าเริ่มต้น = ทั้งรายการ) ----------
+function leaveWorkDates(l){ const hs=holidaySet(), out=[];
+  for(let d=parseD(l.start); isoOf(d)<=l.end; d.setUTCDate(d.getUTCDate()+1)){ const wd=d.getUTCDay(), x=isoOf(d); if(wd!==0&&wd!==6&&!hs.has(x)) out.push(x); }
+  return out; }
+// วันที่ยกเลิก = วันลาเดิม − วันทำการของช่วงที่เหลือ (ตรงกับที่เซิร์ฟเวอร์คำนวณ)
+function cxlDays(l, from, to){
+  if(from===l.start && to===l.end) return Number(l.days||0);
+  const dayBefore=x=>{ const d=parseD(x); d.setUTCDate(d.getUTCDate()-1); return isoOf(d); }, dayAfter=x=>{ const d=parseD(x); d.setUTCDate(d.getUTCDate()+1); return isoOf(d); };
+  const keep=(from>l.start?workingDays(l.start, dayBefore(from)):0)+(to<l.end?workingDays(dayAfter(to), l.end):0);
+  return Math.max(0, Math.round((Number(l.days||0)-keep)*2)/2);
+}
+function cxlFormHtml(l){
+  const id=esc(l.id), dates=leaveWorkDates(l), multi=l.start!==l.end && dates.length>1;
+  const opts=sel=>dates.map(d=>`<option value="${d}" ${d===sel?"selected":""}>${thDate(d)}</option>`).join("");
+  const range=multi?`<div class="cxl-range"><label>ยกเลิกตั้งแต่ <select id="cxl_from" aria-label="ยกเลิกตั้งแต่วันที่">${opts(dates[0])}</select></label>
+      <label>ถึง <select id="cxl_to" aria-label="ยกเลิกถึงวันที่">${opts(dates[dates.length-1])}</select></label>
+      <span class="cxl-days" id="cxl_days">ยกเลิก ${fmtN(l.days)} วันทำการ (ทั้งรายการ)</span></div>`:"";
+  return `<form class="confirm cxl-form" id="cxlForm" data-id="${id}">${range}<input id="cxl_reason" maxlength="500" placeholder="เหตุผลการยกเลิก (จำเป็น)" aria-label="เหตุผลการยกเลิกวันลา" required>
+      <button type="submit" class="small danger">ยืนยันยกเลิกวันลา</button><button type="button" class="small ghost" data-act="cancel">ปิด</button></form>`;
+}
+function findLeave(id){ for(const p of S.staff.values()) for(const l of [...(p.leaves||[]), ...(p.cancelled||[])]) if(l.id===id) return l; return null; }
+function cxlRead(){
+  const f=document.getElementById("cxlForm"); const l=f&&findLeave(f.dataset.id); if(!l) return null;
+  const fe=document.getElementById("cxl_from"), te=document.getElementById("cxl_to");
+  const from=fe?fe.value:l.start, to=te?te.value:l.end;
+  const whole=!fe || (from===leaveWorkDates(l)[0] && to===leaveWorkDates(l).slice(-1)[0]);
+  // เลือกตั้งแต่วันทำการแรกถึงวันทำการสุดท้าย = ยกเลิกทั้งรายการ
+  return {l, from:whole?l.start:from, to:whole?l.end:to, whole};
+}
+function cxlUpdate(){
+  const r=cxlRead(), el=document.getElementById("cxl_days"); if(!r||!el) return;
+  if(r.to<r.from){ el.textContent="วันที่ถึง ต้องไม่ก่อนวันที่ตั้งแต่"; el.classList.add("bad"); return; }
+  el.classList.remove("bad");
+  el.textContent=`ยกเลิก ${fmtN(cxlDays(r.l, r.from, r.to))} วันทำการ`+(r.whole?" (ทั้งรายการ)":` · คงเหลือเป็นวันลา ${fmtN(Number(r.l.days||0)-cxlDays(r.l, r.from, r.to))} วัน`);
+}
 // เมนูยกเลิกวันลา: เลือกประเภทการลา/บุคลากร แล้วยกเลิกหรือคืนสถานะ (ใช้ฟอร์ม cxlForm และปุ่ม restore-leave เดิม)
 function viewCancel(){
   const fy=S.fy, kind=S.cxKind||"all", sid=S.cxStaff||"all", q=(S.cxQ||"").trim().toLowerCase();
@@ -526,8 +564,7 @@ function viewCancel(){
   const range=l=>`${thDate(l.start)}${l.end!==l.start?" – "+thDate(l.end):""}${l.half&&l.half!=="full"?` <small class="muted">(${l.half==="am"?"ครึ่งเช้า":"ครึ่งบ่าย"})</small>`:""}`;
   const pa=paginate(act,"cxa","รายการ"), ph=paginate(hist,"cxh","รายการ");
   const actBtn=l=>{ const id=esc(l.id);
-    if(S.confirmKey==="cxl:"+l.id) return `<form class="confirm cxl-form" id="cxlForm" data-id="${id}"><input id="cxl_reason" maxlength="500" placeholder="เหตุผลการยกเลิก (จำเป็น)" aria-label="เหตุผลการยกเลิกวันลา" required>
-      <button type="submit" class="small danger">ยืนยันยกเลิกวันลา</button><button type="button" class="small ghost" data-act="cancel">ปิด</button></form>`;
+    if(S.confirmKey==="cxl:"+l.id) return cxlFormHtml(l);
     return `<button class="small ghost" data-act="ask" data-k="cxl:${id}">ยกเลิกวันลา</button>`; };
   const rstBtn=l=>{ const id=esc(l.id);
     if(S.confirmKey==="rst:"+l.id) return `<span class="confirm"><button class="small primary" data-act="restore-leave" data-id="${id}">ยืนยันคืนสถานะ</button><button class="small ghost" data-act="cancel">ปิด</button></span>`;
@@ -625,8 +662,7 @@ function leaveTable(p, fy, editable){
   const actions = l => {
     const id=esc(l.id), k=S.confirmKey;
     if(k==="del:"+l.id) return `<span class="confirm"><button class="small danger" data-act="del-leave" data-id="${id}">ยืนยันลบ</button><button class="small ghost" data-act="cancel">ไม่ลบ</button></span>`;
-    if(k==="cxl:"+l.id) return `<form class="confirm cxl-form" id="cxlForm" data-id="${id}"><input id="cxl_reason" maxlength="500" placeholder="เหตุผลการยกเลิก (จำเป็น)" aria-label="เหตุผลการยกเลิกวันลา" required>
-      <button type="submit" class="small danger">ยืนยันยกเลิกวันลา</button><button type="button" class="small ghost" data-act="cancel">ปิด</button></form>`;
+    if(k==="cxl:"+l.id) return cxlFormHtml(l);
     if(k==="rst:"+l.id) return `<span class="confirm"><button class="small primary" data-act="restore-leave" data-id="${id}">ยืนยันคืนสถานะ</button><button class="small ghost" data-act="cancel">ปิด</button></span>`;
     return `<span class="confirm">${l.cancelled
       ?`<button class="small ghost" data-act="ask" data-k="rst:${id}">คืนสถานะ</button>`
@@ -1011,6 +1047,7 @@ document.addEventListener("change", ev => {
   if(id==="fgroup"){ S.filterGroup=ev.target.value; resetPages(); render(); }
   if(id==="sgroup"){ S.sGroup=ev.target.value; resetPages(); render(); }
   if(id==="astatus"){ S.aStatus=ev.target.value; resetPages(); render(); }
+  if(id==="cxl_from"||id==="cxl_to"){ cxlUpdate(); return; }
   if(id==="cxstaff"){ S.cxStaff=ev.target.value; S.confirmKey=null; resetPages(); render(); }
   if(id==="s_group"){ captureStaffForm(); if(!sectionsOf(S.editStaff.group).includes(S.editStaff.section)) S.editStaff.section=""; render(); }
 });
@@ -1044,7 +1081,12 @@ document.addEventListener("submit", async ev => {
   if(f.id==="cxlForm"){
     const reason=(document.getElementById("cxl_reason")?.value||"").trim();
     if(!reason){ toast("กรุณาระบุเหตุผลการยกเลิก"); return; }
-    S.confirmKey=null; try{ await call("cancelLeave", f.dataset.id, reason); toast("ยกเลิกวันลาแล้ว วันที่ยกเลิกไม่นับเป็นวันลา"); }catch(e){}
+    const r=cxlRead(); if(!r) return;
+    if(r.to<r.from){ toast("วันที่ถึง ต้องไม่ก่อนวันที่ตั้งแต่"); return; }
+    if(!r.whole && !(cxlDays(r.l, r.from, r.to)>0)){ toast("ช่วงวันที่เลือกไม่มีวันทำการให้ยกเลิก"); return; }
+    S.confirmKey=null;
+    try{ if(r.whole) await call("cancelLeave", f.dataset.id, reason); else await call("cancelLeave", f.dataset.id, reason, r.from, r.to);
+      toast(r.whole?"ยกเลิกวันลาแล้ว วันที่ยกเลิกไม่นับเป็นวันลา":`ยกเลิก ${thDate(r.from)}${r.from!==r.to?" – "+thDate(r.to):""} แล้ว วันที่เหลือยังนับเป็นวันลา`); }catch(e){}
     return;
   }
   if(f.id==="leaveForm"){

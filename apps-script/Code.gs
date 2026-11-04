@@ -463,7 +463,9 @@ function deleteLeave(token, leaveId) {
 }
 
 // ขอยกเลิกวันลา: รายการยังอยู่ในประวัติ แต่ไม่นับเป็นวันลาที่ใช้ไป
-function cancelLeave(token, leaveId, reason) {
+// from/to (ไม่บังคับ) = ยกเลิกเฉพาะบางวัน: แยกรายการเดิมเป็น ช่วงก่อน / ช่วงที่ยกเลิก / ช่วงหลัง
+// ช่วงที่ไม่ได้ยกเลิกยังนับเป็นวันลาตามวันทำการ (ตัดเสาร์-อาทิตย์และวันหยุดราชการ)
+function cancelLeave(token, leaveId, reason, from, to) {
   var s = requireHR_(token);
   reason = String(reason || '').trim();
   if (!reason) throw new Error('กรุณาระบุเหตุผลการยกเลิก');
@@ -471,11 +473,50 @@ function cancelLeave(token, leaveId, reason) {
     var me = findStaff_(s.id);
     var sh = sheet_(SH.LEAVES), row = leaveRow_(sh, leaveId);
     ensureHead_(sh, LEAVE_HEAD);
-    if (isCancelled_(sh.getRange(row, 15).getValue())) throw new Error('รายการนี้ยกเลิกไปแล้ว');
+    var cur = sh.getRange(row, 1, 1, 18).getValues()[0];
+    if (isCancelled_(cur[14])) throw new Error('รายการนี้ยกเลิกไปแล้ว');
+    var start = isoCell_(cur[5]), end = isoCell_(cur[6]);
+    from = from ? String(from) : start; to = to ? String(to) : end;
+    if (!isIso_(from) || !isIso_(to) || to < from) throw new Error('วันที่ยกเลิกไม่ถูกต้อง');
+    if (from < start || to > end) throw new Error('วันที่ยกเลิกต้องอยู่ในช่วงวันลา ' + start + ' ถึง ' + end);
+    var cancelVals = [CANCELLED, reason.slice(0, 500), me.name, new Date()];
     sh.getRange(row, 16).setNumberFormat('@'); // เหตุผลเก็บเป็นข้อความ (กัน = กลายเป็นสูตร)
-    sh.getRange(row, 15, 1, 4).setValues([[CANCELLED, reason.slice(0, 500), me.name, new Date()]]);
+    if (from === start && to === end) { sh.getRange(row, 15, 1, 4).setValues([cancelVals]); return; }
+
+    var hol = {};
+    rowsOf_(SH.HOLIDAYS).forEach(function (x) { var d = isoCell_(x[0]); if (d) hol[d] = 1; });
+    var before = from > start ? { a: start, b: addDays_(from, -1) } : null;
+    var after = to < end ? { a: addDays_(to, 1), b: end } : null;
+    [before, after].forEach(function (p) { if (p) p.days = workDays_(p.a, p.b, hol); });
+    var keep = [before, after].filter(function (p) { return p && p.days > 0; });
+    var total = Number(cur[8]) || 0;
+    var cancelDays = Math.round((total - keep.reduce(function (n, p) { return n + p.days; }, 0)) * 2) / 2;
+    if (!(cancelDays > 0)) throw new Error('ช่วงวันที่เลือกไม่มีวันทำการให้ยกเลิก');
+    // แถวเดิม = ช่วงที่ยกเลิก
+    sh.getRange(row, 6, 1, 5).setValues([[from, to, 'full', cancelDays, fyOf_(from)]]);
+    sh.getRange(row, 15, 1, 4).setValues([cancelVals]);
+    // ช่วงที่ยังลาอยู่ = รายการใหม่ (คัดลอกประเภท หมายเหตุ เลขที่ใบลา ผู้บันทึกเดิม)
+    keep.forEach(function (p) {
+      var r = sh.getLastRow() + 1;
+      if (r > sh.getMaxRows()) sh.insertRowAfter(sh.getMaxRows());
+      ['F', 'G', 'K', 'L'].forEach(function (c) { sh.getRange(c + r).setNumberFormat('@'); });
+      sh.getRange(r, 1, 1, 14).setValues([[Utilities.getUuid(), cur[1], cur[2], cur[3], cur[4], p.a, p.b, 'full', p.days,
+        fyOf_(p.a), cur[10], cur[11], cur[12], cur[13]]]);
+    });
   });
   return { data: buildData_(s) };
+}
+function addDays_(iso, n) {
+  var d = new Date(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10) + n));
+  return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
+}
+function workDays_(a, b, hol) {
+  var n = 0;
+  for (var d = a; d <= b; d = addDays_(d, 1)) {
+    var wd = new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10))).getUTCDay();
+    if (wd !== 0 && wd !== 6 && !hol[d]) n++;
+  }
+  return n;
 }
 
 // คืนสถานะรายการที่ยกเลิกผิด กลับมานับเป็นวันลาตามเดิม

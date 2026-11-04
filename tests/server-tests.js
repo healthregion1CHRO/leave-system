@@ -102,6 +102,33 @@ window.runServerTests = function () {
     ok('restore active rejected', throws(() => A.restoreLeave(T, lv.id), /ไม่ได้ถูกยกเลิก/));
     ok('API exposes cancel/restore', !!A.apiFn_('cancelLeave') && !!A.apiFn_('restoreLeave'));
 
+    // 7c. ยกเลิกเฉพาะบางวัน: 16–27 พ.ย. 69 (จ.–ศ. 2 สัปดาห์) วันหยุด 20 พ.ย. → 9 วันทำการ
+    A.addHoliday(T, '2026-11-20', 'ทดสอบ');
+    d = A.addLeave(T, { staffId: st.id, kind: 'vacation', start: '2026-11-16', end: '2026-11-27', days: 9, note: '=ไปต่างจังหวัด', docNo: '12/2569' }).data;
+    const pl = d.leaves.find(x => x.start === '2026-11-16' && x.end === '2026-11-27');
+    const nLeaves = rows('การลา').length;
+    ok('partial: from before start rejected', throws(() => A.cancelLeave(T, pl.id, 'x', '2026-11-13', '2026-11-18'), /ช่วงวันลา/));
+    ok('partial: to after end rejected', throws(() => A.cancelLeave(T, pl.id, 'x', '2026-11-25', '2026-11-30'), /ช่วงวันลา/));
+    ok('partial: to < from rejected', throws(() => A.cancelLeave(T, pl.id, 'x', '2026-11-23', '2026-11-19'), /ไม่ถูกต้อง/));
+    ok('partial: weekend-only range rejected', throws(() => A.cancelLeave(T, pl.id, 'x', '2026-11-21', '2026-11-22'), /ไม่มีวันทำการ/));
+    ok('partial: failed attempts change nothing', rows('การลา').length === nLeaves && !A.bootstrap(T).data.leaves.find(x => x.id === pl.id).cancelled);
+    d = A.cancelLeave(T, pl.id, 'กลับมาปฏิบัติงาน', '2026-11-19', '2026-11-23').data;
+    const mine = d.leaves.filter(x => x.staffId === st.id && x.kind === 'vacation' && x.start >= '2026-11-16' && x.end <= '2026-11-27').sort((a, b) => a.start.localeCompare(b.start));
+    const sig = mine.map(x => [x.start, x.end, x.days, x.cancelled].join('|'));
+    ok('partial: split into before / cancelled / after',
+      JSON.stringify(sig) === JSON.stringify(['2026-11-16|2026-11-18|3|false', '2026-11-19|2026-11-23|2|true', '2026-11-24|2026-11-27|4|false']), sig);
+    ok('partial: cancelled row keeps id + reason', mine[1].id === pl.id && mine[1].cancelReason === 'กลับมาปฏิบัติงาน' && mine[1].cancelledBy === 'นายทดสอบ ผู้ดูแล');
+    ok('partial: new rows copy note/docNo/fy', mine[0].note === '=ไปต่างจังหวัด' && mine[2].docNo === '12/2569' && mine[0].fy === 2570 && mine[0].id !== mine[2].id);
+    ok('partial: total days preserved', mine.reduce((n, x) => n + x.days, 0) === 9);
+    ok('partial: no Date in data', !noDates(d), noDates(d));
+    d = A.cancelLeave(T, mine[2].id, 'x', '2026-11-24', '2026-11-24').data; // ยกเลิกวันแรกของช่วงหลัง → เหลือ 25–27
+    ok('partial: cancel first day only', d.leaves.some(x => x.id === mine[2].id && x.start === '2026-11-24' && x.end === '2026-11-24' && x.days === 1 && x.cancelled)
+      && d.leaves.some(x => !x.cancelled && x.start === '2026-11-25' && x.end === '2026-11-27' && x.days === 3));
+    d = A.restoreLeave(T, pl.id).data;
+    ok('partial: restore counts cancelled part again', d.leaves.find(x => x.id === pl.id).cancelled === false && d.leaves.find(x => x.id === pl.id).days === 2);
+    d.leaves.filter(x => x.staffId === st.id && x.kind === 'vacation' && x.start >= '2026-11-16' && x.end <= '2026-11-27').forEach(x => A.deleteLeave(T, x.id));
+    A.deleteHoliday(T, '2026-11-20');
+
     // 8. carry
     d = A.saveCarry(T, st.id, 2570, { sick: '', personal: '', vacation: 5 }).data;
     ok('saveCarry', d.carry.some(c => c.staffId === st.id && c.vacation === 5 && c.sick === null));

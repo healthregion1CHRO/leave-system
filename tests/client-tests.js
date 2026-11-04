@@ -145,6 +145,27 @@
       const rr = [...document.querySelectorAll('#app tr.cancelled')].find(r => /ยกเลิกจากเมนู/.test(r.innerText));
       await click(rr.querySelector('[data-k^="rst:"]')); await click('[data-act="restore-leave"]'); await wait(200);
       ok('restore from menu', leaves().filter(r => r[14] === 'ยกเลิก').length === 1 && !leaves().some(r => r[15] === 'ยกเลิกจากเมนู') && JSON.stringify(tbls()) === '[1,1]', JSON.stringify(tbls()));
+      // ยกเลิกเฉพาะบางวัน: ลาป่วย 2–4 พ.ย. (3 วัน) ยกเลิกเฉพาะ 3 พ.ย.
+      await click('#app tbody tr:not(.cancelled) [data-act="ask"][data-k^="cxl:"]');
+      ok('cancel form has date range (default = whole leave)', !!$('#cxl_from') && !!$('#cxl_to') && $('#cxl_from').value === '2026-11-02' && $('#cxl_to').value === '2026-11-04' && /3 วันทำการ \(ทั้งรายการ\)/.test($('#cxl_days').innerText), $('#cxl_days') && $('#cxl_days').innerText);
+      await setv('#cxl_reason', 'มาปฏิบัติงาน 3 พ.ย.', 'input');
+      await setv('#cxl_from', '2026-11-03'); await setv('#cxl_to', '2026-11-02');
+      ok('range check: to before from warned', /ไม่ก่อน/.test($('#cxl_days').innerText) && $('#cxl_reason').value === 'มาปฏิบัติงาน 3 พ.ย.');
+      $('#cxlForm').requestSubmit(); await wait(250);
+      ok('to before from not saved', leaves().filter(r => r[14] === 'ยกเลิก').length === 1 && !!$('#cxlForm'));
+      await setv('#cxl_to', '2026-11-03');
+      ok('preview shows 1 day cancelled, 2 kept', /ยกเลิก 1 วันทำการ/.test($('#cxl_days').innerText) && /คงเหลือเป็นวันลา 2 วัน/.test($('#cxl_days').innerText), $('#cxl_days').innerText);
+      $('#cxlForm').requestSubmit(); await wait(250);
+      const part = leaves().filter(r => r[1] === leaves().find(x => x[15] === 'มาปฏิบัติงาน 3 พ.ย.')[1] && r[3] === 'sick' && r[5] >= '2026-11-02' && r[6] <= '2026-11-04').map(r => [r[5], r[6], r[8], r[14] || '-'].join('|')).sort();
+      ok('partial cancel splits leave in sheet', JSON.stringify(part) === JSON.stringify(['2026-11-02|2026-11-02|1|-', '2026-11-03|2026-11-03|1|ยกเลิก', '2026-11-04|2026-11-04|1|-']), JSON.stringify(part));
+      ok('partial cancel shown in menu', JSON.stringify(tbls()) === '[2,2]' && /^2/.test(tileVal('sick')), JSON.stringify(tbls()));
+      const pr = [...document.querySelectorAll('#app tr.cancelled')].find(r => /มาปฏิบัติงาน 3 พ\.ย\./.test(r.innerText));
+      await click(pr.querySelector('[data-k^="rst:"]')); await click('[data-act="restore-leave"]'); await wait(200);
+      ok('restore partial cancel', leaves().filter(r => r[14] === 'ยกเลิก').length === 1 && JSON.stringify(tbls()) === '[3,1]', JSON.stringify(tbls()));
+      await click('[data-act="ask"][data-k^="cxl:"]');
+      const oneRow = $('#cxlForm') && $('#cxlForm').closest('tr');
+      ok('single-day leave: no date range', oneRow && !/ – /.test(oneRow.cells[2].innerText) && !$('#cxl_from'), oneRow && oneRow.cells[2].innerText);
+      await click('[data-act="cancel"]');
 
       // settings: add holiday via UI
       await click('[data-act="tab"][data-v="settings"]');
