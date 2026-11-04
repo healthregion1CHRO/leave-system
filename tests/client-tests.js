@@ -99,8 +99,8 @@
       for (let i = 0; i < Math.abs(diff); i++) await click(`[data-act="cal-nav"][data-d="${diff > 0 ? 1 : -1}"]`);
       ok('calendar shows พฤศจิกายน 2569', /พฤศจิกายน 2569/.test($('.lc-title').innerText), $('.lc-title').innerText);
       const cell = d => $(`[data-act="cal-day"][data-d="${d}"]`);
-      ok('leave days marked on grid', /\b1\b/.test(cell('2026-11-03').querySelector('.lc-count')?.innerText || '') && !!cell('2026-11-05').querySelector('.lc-chip'), cell('2026-11-03').innerText);
-      ok('day cell shows type + count', /ป่วย 1/.test(cell('2026-11-03').querySelector('.lc-kinds')?.innerText || '') && !cell('2026-11-07').querySelector('.lc-kinds'), cell('2026-11-03').innerText.replace(/\s+/g, ' '));
+      ok('leave days marked on grid', /\b1\b/.test(cell('2026-11-03').querySelector('.lc-count')?.innerText || '') && !!cell('2026-11-05').querySelector('.lc-k'), cell('2026-11-03').innerText);
+      ok('day cell shows type + count, no names', /ลาป่วย\s*1/.test(cell('2026-11-03').querySelector('.lc-kinds')?.innerText || '') && !cell('2026-11-03').querySelector('.lc-chip') && !/บานเย็น/.test(cell('2026-11-03').innerText) && !cell('2026-11-07').querySelector('.lc-kinds'), cell('2026-11-03').innerText.replace(/\s+/g, ' '));
       ok('weekend not marked', !cell('2026-11-07').querySelector('.lc-count'));
       await click(cell('2026-11-05'));
       ok('day detail lists person with half-day', /ผู้ลาวันที่ 5 พ.ย. 2569/.test(text()) && /ครึ่งเช้า/.test(text()));

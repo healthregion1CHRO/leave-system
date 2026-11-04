@@ -279,9 +279,10 @@ button.del-strong{background:var(--danger);color:#fff;border-color:var(--danger)
 .lc-more{font-size:.7rem;color:var(--muted)}
 .linklike{border:0;background:none;padding:0;color:var(--accent-strong);font:inherit;font-weight:600;cursor:pointer;text-align:left}
 .linklike:hover{text-decoration:underline}
-.lc-kinds{display:flex;flex-wrap:wrap;gap:3px}
-.lc-k{font-size:.68rem;font-weight:700;border-radius:999px;padding:0 7px;line-height:1.6;white-space:nowrap}
-@media (max-width:640px){.lc-cell{min-height:56px;padding:4px}.lc-chips,.lc-holname{display:none}.lc-k{font-size:.62rem;padding:0 4px}.lc-num{flex-direction:column;align-items:flex-start;gap:2px}.lc-grid{gap:2px;padding:4px}}
+.lc-kinds{display:flex;flex-direction:column;gap:3px;min-width:0}
+.lc-k{display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:.74rem;font-weight:600;border-radius:6px;padding:1px 7px;line-height:1.55;white-space:nowrap;overflow:hidden}
+.lc-k b{font-weight:700}
+@media (max-width:640px){.lc-cell{min-height:56px;padding:4px}.lc-chips,.lc-holname{display:none}.lc-k{font-size:.6rem;padding:0 3px}.lc-k span{overflow:hidden;text-overflow:ellipsis}.lc-num{flex-direction:column;align-items:flex-start;gap:2px}.lc-grid{gap:2px;padding:4px}}
 @media (max-width:560px){header.top{position:static}th,td{padding:10px}.bal .big{font-size:2rem}.ring{width:80px;height:80px}.ring span{width:60px;height:60px}.brand h1{font-size:1.15rem}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 .cx-tile{text-align:left;cursor:pointer;font:inherit;color:inherit}
@@ -1039,7 +1040,7 @@ function calSummaryHtml(ym, monthLabel){
     <tr class="lc-total"><td colspan="2"><b>รวม</b></td><td class="num"><b>${fmtN(tot.sick)}</b></td><td class="num"><b>${fmtN(tot.personal)}</b></td><td class="num"><b>${fmtN(tot.vacation)}</b></td><td class="num"><b>${fmtN(tot.total)}</b></td><td class="num"><b>${rows.reduce((a,r)=>a+r.n,0)}</b></td></tr>
   </tbody></table></div>`:`<p class="muted">ไม่มีการลาในเดือนนี้</p>`}</details>`;
 }
-const CAL_SHORT = {sick:"ป่วย", personal:"กิจ", vacation:"พักผ่อน"};
+const CAL_SHORT = {sick:"ลาป่วย", personal:"ลากิจ", vacation:"ลาพักผ่อน"};
 const CAL_HEAD = `<thead><tr><th>ชื่อ-สกุล</th><th>กลุ่มงาน/งาน</th><th>ประเภท</th><th>วันที่ลา</th><th class="num">วันทำการ</th><th>หมายเหตุ / เลขที่ใบลา</th></tr></thead>`;
 function viewCalendar(){
   const ym=S.calYm||todayIso().slice(0,7), D=calMonthData(ym), today=todayIso();
@@ -1054,11 +1055,10 @@ function viewCalendar(){
     const cls=["lc-cell", wd===0||wd===6?"lc-off":"", h?"lc-hol":"", iso===today?"lc-today":"", iso===sel?"lc-sel":""].filter(Boolean).join(" ");
     // จำนวนคนลาแยกประเภทในวันนั้น (แสดงเฉพาะประเภทที่มี)
     const kc={}; for(const {l} of items) kc[l.kind]=(kc[l.kind]||0)+1;
-    const kinds=Object.keys(KINDS).filter(k=>kc[k]).map(k=>`<span class="lc-k ${KINDS[k].cls}" title="${KINDS[k].label} ${kc[k]} คน">${CAL_SHORT[k]||KINDS[k].label} ${kc[k]}</span>`).join("");
-    const chips=items.slice(0,3).map(({l,p})=>`<span class="lc-chip ${(KINDS[l.kind]||{}).cls||""}" title="${esc(p.name)} · ${(KINDS[l.kind]||{}).label||""}">${esc(shortName(p.name))}${halfTxt(l)?" ½":""}</span>`).join("");
+    const kinds=Object.keys(KINDS).filter(k=>kc[k]).map(k=>`<span class="lc-k ${KINDS[k].cls}" title="${KINDS[k].label} ${kc[k]} คน"><span>${CAL_SHORT[k]||KINDS[k].label}</span><b>${kc[k]} คน</b></span>`).join("");
     cells+=`<button type="button" class="${cls}" data-act="cal-day" data-d="${iso}" aria-label="${d} ${TH_MONTHS_FULL[D.m-1]}${h?" "+esc(h):""} ลา ${items.length} คน${Object.keys(KINDS).filter(k=>kc[k]).map(k=>` ${KINDS[k].label} ${kc[k]}`).join("")}"${iso===sel?' aria-pressed="true"':""}>
       <span class="lc-num">${d}${items.length?`<b class="lc-count">${items.length}</b>`:""}</span>${h?`<span class="lc-holname">${esc(h)}</span>`:""}
-      ${kinds?`<span class="lc-kinds">${kinds}</span>`:""}<span class="lc-chips">${chips}${items.length>3?`<span class="lc-more">+${items.length-3}</span>`:""}</span></button>`;
+      ${kinds?`<span class="lc-kinds">${kinds}</span>`:""}</button>`;
   }
   const people=new Set(D.list.map(x=>x.p._id)).size;
   const sum=k=>D.list.filter(x=>x.l.kind===k).reduce((s,x)=>s+x.mdays,0);
