@@ -327,6 +327,7 @@ function login(username, password) {
   var fails = Number(cache.get(key) || 0);
   if (fails >= MAX_FAILS) throw new Error('ใส่รหัสผิดเกิน ' + MAX_FAILS + ' ครั้ง กรุณารอ 15 นาทีแล้วลองใหม่');
   if (staffRows_().some(function (r) { return r.pendingCid || !r.id; })) withLock_(hashPending_);
+  repairLeaveIds_();
   var want = normName_(username);
   var pw = String(password || '');
   var cands = staffRows_().filter(function (r) { return normName_(r.name) === want && r.hash; });
@@ -696,6 +697,34 @@ function hashPending_() {
     n++;
   }
   return n;
+}
+// ซ่อมรายการลา/ยอดยกมาที่ staffId เสีย (เช่น ถูกวางข้อความทับในชีต): ผูกกลับด้วยชื่อ-สกุล
+// เฉพาะกรณีชื่อตรงกับบุคลากรคนเดียว (ชื่อซ้ำหรือไม่พบ = ไม่แตะ)
+function repairLeaveIds_() {
+  var staff = staffRows_(), ids = {}, byName = {};
+  staff.forEach(function (r) {
+    if (!r.id) return;
+    ids[r.id] = 1;
+    var k = normName_(r.name);
+    byName[k] = byName[k] === undefined ? r.id : null;
+  });
+  var fix = function (name, idCol, nameCol) {
+    var sh = sheet_(name), v = sh.getDataRange().getValues(), n = 0;
+    for (var i = 1; i < v.length; i++) {
+      var id = String(v[i][idCol - 1]).trim();
+      if (ids[id] || !String(v[i][nameCol - 1]).trim()) continue;
+      var nid = byName[normName_(v[i][nameCol - 1])];
+      if (nid) { sh.getRange(i + 1, idCol).setValue(nid); n++; }
+    }
+    return n;
+  };
+  var bad = function (name, idCol, nameCol) {
+    return sheet_(name).getDataRange().getValues().slice(1).some(function (x) {
+      return String(x[nameCol - 1]).trim() && !ids[String(x[idCol - 1]).trim()] && byName[normName_(x[nameCol - 1])];
+    });
+  };
+  if (!bad(SH.LEAVES, 2, 3) && !bad(SH.CARRY, 1, 2)) return 0;
+  return withLock_(function () { return fix(SH.LEAVES, 2, 3) + fix(SH.CARRY, 1, 2); });
 }
 function deleteWhere_(name, col, val) {
   var sh = sheet_(name);
