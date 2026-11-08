@@ -310,5 +310,31 @@ window.runServerTests = function () {
     ghCode = 200;
     ok('updater not exposed to web API', !U.apiFn_('autoUpdate_') && !U.apiFn_('menuUpdateNow') && !U.apiFn_('autoUpdateTick'));
   } catch (e) { out.push('CRASH4 ' + e.stack); }
+
+  // รหัสผ่านเริ่มต้น 123456 (ไม่มีเลขบัตรประชาชน)
+  try {
+    const n = GasMock.loadServer(window.CODE_GS), B = n.api;
+    n.prompts.push('นางสาวปัณฑิตา ต๊ะเรือน', ''); // HR คนแรกไม่กรอกเลขบัตร
+    B.setupSystem();
+    const H = B.login('นางสาวปัณฑิตา ต๊ะเรือน', '123456');
+    ok('default pw: HR without ID logs in with 123456', !!H.token && H.mustChange && H.data.isHR);
+    const T = H.token;
+    let d = B.saveStaff(T, { name: 'นายเจริญ มะโนธรรม', group: 'สำนักปลัด', ptype: 'gov', role: 'บุคลากร' }).data;
+    const je = d.staff.find(x => x.name.includes('เจริญ'));
+    ok('default pw: saveStaff without ID allowed', !!je);
+    ok('default pw: new staff logs in with 123456', !!B.login('นายเจริญ มะโนธรรม', '123456').token);
+    // วางรายชื่อลงชีตตรง ๆ (ไม่มี id / ไม่มี hash)
+    const st = n.ss.getSheetByName('บุคลากร');
+    st.appendRow(['', 'นายณัฐวุฒิ ขยันขาย', '', '', 'กองคลัง', '', '', '', '', '', '', '', '']);
+    const P = B.login('ณัฐวุฒิ ขยันขาย', '123456');
+    ok('default pw: pasted row gets id, role and 123456', !!P.token && P.mustChange && !P.data.isHR);
+    const pr = st._s.rows.find(r => r[1] === 'นายณัฐวุฒิ ขยันขาย');
+    ok('default pw: no plain password stored', pr && /^s/.test(pr[0]) && pr[7] === 'บุคลากร' && pr[10] && pr[10] !== '123456' && pr[11] === true);
+    B.changePassword(P.token, '123456', 'myOwnPass9');
+    ok('default pw: old 123456 rejected after change', throws(() => B.login('ณัฐวุฒิ ขยันขาย', '123456'), /ไม่ถูกต้อง/));
+    B.resetPassword(T, pr[0]);
+    ok('default pw: HR reset without ID → 123456', !!B.login('ณัฐวุฒิ ขยันขาย', '123456').token);
+    ok('default pw: reset rejects bad ID', throws(() => B.resetPassword(T, pr[0], '1234567890123'), /ไม่ถูกต้อง/));
+  } catch (e) { out.push('CRASH5 ' + e.stack); }
   return out;
 };

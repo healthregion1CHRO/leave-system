@@ -838,7 +838,7 @@ function viewStaff(){
     <td>${roleStatus(p)}</td>
     <td class="num">${(p.leaves||[]).length}</td>
     <td>${actBtns(p._id, true)}</td></tr>`).join("");
-  return `<div class="row"><div><h2>รายชื่อบุคลากร</h2><span class="muted">ทั้งหมด ${all.length} คน · บุคลากรเข้าระบบด้วยชื่อ-นามสกุลและเลขบัตรประชาชน และเห็นเฉพาะการลาของตนเอง</span></div>
+  return `<div class="row"><div><h2>รายชื่อบุคลากร</h2><span class="muted">ทั้งหมด ${all.length} คน · บุคลากรเข้าระบบด้วยชื่อ-นามสกุล (รหัสผ่านเริ่มต้น 123456) และเห็นเฉพาะการลาของตนเอง</span></div>
     <span class="spacer"></span><button class="primary icon-btn" data-act="new-staff">${ICON.plus}เพิ่มบุคลากร</button></div>
   <div class="toolbar"><input id="sq" type="search" placeholder="ค้นหาชื่อ ตำแหน่ง กลุ่มงาน งาน" value="${esc(S.sq||"")}">
     <select id="sgroup"><option value="all">ทุกกลุ่มงาน</option>${gOpts}</select>
@@ -867,8 +867,8 @@ function staffModal(){
         : `<select id="s_section" disabled><option value="">${e.group?"กลุ่มงานนี้ไม่มีงานย่อย":"เลือกกลุ่มงานก่อน"}</option></select>`}</label>
       <label class="field"><span>ประเภทบุคลากร</span><select id="s_type">${typeOpts}</select></label>
       <label class="field"><span>บทบาทในระบบ</span><select id="s_role"><option value="บุคลากร" ${e.role!=="HR"?"selected":""}>บุคลากร (ดูการลาของตนเอง)</option><option value="HR" ${e.role==="HR"?"selected":""}>เจ้าหน้าที่ HR (จัดการทั้งระบบ)</option></select></label>
-      <label class="field"><span>เลขบัตรประชาชน 13 หลัก ${e.id?"(เว้นว่าง = ใช้รหัสผ่านเดิม)":"*"}</span><input id="s_cid" inputmode="numeric" autocomplete="off" maxlength="17" value="${esc(e.cid||"")}" placeholder="${e.id?"กรอกเมื่อต้องการรีเซ็ตรหัสผ่าน":"ใช้เป็นรหัสผ่านเริ่มต้น"}"></label>
-      <div class="field wide"><div class="notice">ผู้ใช้งาน = ชื่อ-นามสกุลตามที่บันทึก · รหัสผ่านเริ่มต้น = เลขบัตรประชาชน ระบบเก็บเลขบัตรแบบเข้ารหัส ไม่เก็บตัวเลขจริง</div></div>
+      <label class="field"><span>เลขบัตรประชาชน 13 หลัก ${e.id?"(เว้นว่าง = ใช้รหัสผ่านเดิม)":"(ไม่บังคับ)"}</span><input id="s_cid" inputmode="numeric" autocomplete="off" maxlength="17" value="${esc(e.cid||"")}" placeholder="${e.id?"กรอกเมื่อต้องการใช้เลขบัตรเป็นรหัสผ่าน":"เว้นว่าง = รหัสผ่าน 123456"}"></label>
+      <div class="field wide"><div class="notice">ผู้ใช้งาน = ชื่อ-นามสกุลตามที่บันทึก · รหัสผ่านเริ่มต้น = 123456 (หรือเลขบัตรประชาชนถ้ากรอก) ระบบเก็บรหัสแบบเข้ารหัส ไม่เก็บตัวเลขจริง</div></div>
     </div></div>
     <div class="m-foot">${e.id?`<button type="button" class="ghost icon-btn" style="color:var(--danger);margin-right:auto" data-act="ask-del-staff" data-id="${esc(e.id)}">${ICON.trash}ลบบุคลากรนี้</button>`:""}
       <button type="button" class="ghost" data-act="cancel-staff">ยกเลิก</button><button type="submit" class="primary">${e.id?"บันทึกการแก้ไข":"เพิ่มบุคลากร"}</button></div>
@@ -887,7 +887,7 @@ function deleteModal(){
 
 function roleStatus(p){
   const r = p.role==="HR" ? `<span class="pill" style="background:var(--vac-soft);color:var(--vac)">HR</span>` : "";
-  const st = !p.hasPassword ? `<span class="pill warn">ยังไม่มีรหัสผ่าน</span>` : p.mustChange ? `<span class="pill k-per">ใช้เลขบัตรเป็นรหัส</span>` : `<span class="pill" style="background:var(--accent-soft);color:var(--accent-strong)">ตั้งรหัสผ่านเองแล้ว</span>`;
+  const st = !p.hasPassword ? `<span class="pill warn">ยังไม่มีรหัสผ่าน</span>` : p.mustChange ? `<span class="pill k-per">ใช้รหัสเริ่มต้น</span>` : `<span class="pill" style="background:var(--accent-soft);color:var(--accent-strong)">ตั้งรหัสผ่านเองแล้ว</span>`;
   return `<span class="row" style="gap:6px;display:inline-flex">${r}${st}</span>`;
 }
 function thDateTime(iso){ if(!iso) return "ยังไม่เคยเข้าใช้"; const d=new Date(iso); if(isNaN(d)) return "–"; const p=n=>String(n).padStart(2,"0"); return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear()+543} ${p(d.getHours())}:${p(d.getMinutes())} น.`; }
@@ -912,15 +912,15 @@ function viewAccounts(){
   <div class="stats">
     <div class="stat all"><span class="lbl"><i></i>บัญชีทั้งหมด</span><span class="val">${all.length}<small>คน</small></span></div>
     <div class="stat vac"><span class="lbl"><i></i>เคยเข้าใช้แล้ว</span><span class="val">${used}<small>คน</small></span></div>
-    <div class="stat per"><span class="lbl"><i></i>ยังใช้เลขบัตรเป็นรหัส</span><span class="val">${all.length-changed}<small>คน</small></span></div>
+    <div class="stat per"><span class="lbl"><i></i>ยังใช้รหัสเริ่มต้น</span><span class="val">${all.length-changed}<small>คน</small></span></div>
   </div>
   <div class="panel steps"><h3>วิธีเข้าใช้งานของบุคลากร</h3><ol>
     <li>เปิดลิงก์ระบบ (ลิงก์เดียวกับที่ HR ใช้)</li>
     <li><b>ผู้ใช้งาน</b> = ชื่อ-นามสกุลตามที่บันทึกในระบบ (จะพิมพ์คำนำหน้าหรือไม่ก็ได้)</li>
-    <li><b>รหัสผ่าน</b> = เลขบัตรประชาชน 13 หลัก หลังเข้าครั้งแรกระบบจะแนะนำให้ตั้งรหัสผ่านใหม่</li>
-    <li>ลืมรหัสผ่าน: HR กด “รีเซ็ตรหัสผ่าน” แล้วกรอกเลขบัตรของบุคคลนั้น รหัสผ่านจะกลับเป็นเลขบัตรประชาชน</li></ol></div>
+    <li><b>รหัสผ่านเริ่มต้น</b> = 123456 หลังเข้าครั้งแรกระบบจะแนะนำให้ตั้งรหัสผ่านใหม่</li>
+    <li>ลืมรหัสผ่าน: HR กด “รีเซ็ตรหัสผ่าน” รหัสผ่านจะกลับเป็น 123456</li></ol></div>
   <div class="toolbar"><input id="aq" type="search" placeholder="ค้นหาชื่อ ตำแหน่ง กลุ่มงาน" value="${esc(S.aq||"")}">
-    <select id="astatus">${sOpt("all","ทุกบัญชี")}${sOpt("hr","เฉพาะ HR")}${sOpt("never","ยังไม่เคยเข้าใช้")}${sOpt("default","ยังใช้เลขบัตรเป็นรหัส")}</select></div>
+    <select id="astatus">${sOpt("all","ทุกบัญชี")}${sOpt("hr","เฉพาะ HR")}${sOpt("never","ยังไม่เคยเข้าใช้")}${sOpt("default","ยังใช้รหัสเริ่มต้น")}</select></div>
   <div class="tbl-wrap"><table><thead><tr><th class="no">ที่</th><th>ชื่อ-สกุล (ผู้ใช้งาน)</th><th>บทบาท / สถานะรหัสผ่าน</th><th>เข้าใช้ล่าสุด</th><th class="num">จัดการ</th></tr></thead>
   <tbody>${rows||`<tr><td colspan="5" class="muted">ไม่พบรายชื่อตามเงื่อนไข</td></tr>`}</tbody></table></div>${pg.html}`;
 }
@@ -928,15 +928,15 @@ function resetModal(){
   const p = S.resetFor && S.staff.get(S.resetFor); if(!p) return "";
   return `<div class="overlay" data-act="overlay"><form class="modal sm" id="resetForm" role="dialog" aria-modal="true" aria-labelledby="rTitle">
     <div class="m-head"><span class="badge">${ICON.user}</span><div><h3 id="rTitle">รีเซ็ตรหัสผ่าน</h3><span class="muted" style="font-size:.85rem">${esc(p.name)}</span></div></div>
-    <div class="m-body"><label class="field"><span>เลขบัตรประชาชน 13 หลักของบุคคลนี้</span><input id="r_cid" inputmode="numeric" autocomplete="off" maxlength="17" required></label>
-      <div class="notice">รหัสผ่านจะกลับเป็นเลขบัตรประชาชน และระบบจะแนะนำให้เจ้าของบัญชีตั้งรหัสใหม่หลังเข้าใช้</div></div>
+    <div class="m-body"><label class="field"><span>เลขบัตรประชาชน 13 หลัก (ไม่บังคับ)</span><input id="r_cid" inputmode="numeric" autocomplete="off" maxlength="17" placeholder="เว้นว่าง = รหัสผ่าน 123456"></label>
+      <div class="notice">รหัสผ่านจะกลับเป็น 123456 (หรือเลขบัตรถ้ากรอก) และระบบจะแนะนำให้เจ้าของบัญชีตั้งรหัสใหม่หลังเข้าใช้</div></div>
     <div class="m-foot"><button type="button" class="ghost" data-act="reset-close">ยกเลิก</button><button type="submit" class="primary">รีเซ็ตรหัสผ่าน</button></div></form></div>`;
 }
 function pwModalHtml(){
   if(!S.pwModal) return "";
   return `<div class="overlay" data-act="overlay"><form class="modal sm" id="pwForm" role="dialog" aria-modal="true" aria-labelledby="pTitle">
     <div class="m-head"><span class="badge">${ICON.user}</span><div><h3 id="pTitle">เปลี่ยนรหัสผ่าน</h3><span class="muted" style="font-size:.85rem">${esc(S.me?.name||"")}</span></div></div>
-    <div class="m-body">${S.pwModal.first?`<div class="notice ok">คุณยังใช้เลขบัตรประชาชนเป็นรหัสผ่าน แนะนำให้ตั้งรหัสผ่านใหม่ที่เดาได้ยาก</div>`:""}
+    <div class="m-body">${S.pwModal.first?`<div class="notice ok">คุณยังใช้รหัสผ่านเริ่มต้นอยู่ แนะนำให้ตั้งรหัสผ่านใหม่ที่เดาได้ยาก</div>`:""}
       <label class="field"><span>รหัสผ่านปัจจุบัน</span><input id="p_old" type="password" autocomplete="current-password" required></label>
       <label class="field"><span>รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)</span><input id="p_new" type="password" autocomplete="new-password" minlength="8" required></label>
       <label class="field"><span>ยืนยันรหัสผ่านใหม่</span><input id="p_new2" type="password" autocomplete="new-password" minlength="8" required></label></div>
@@ -947,7 +947,7 @@ function viewLogin(){
     <div class="login-head"><div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#06352d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="m8.5 15 2.5 2.5 4.5-5"/></svg></div>
       <div><h2>เข้าสู่ระบบ</h2><span class="muted">ระบบวันลาบุคลากร</span></div></div>
     <label class="field"><span>ผู้ใช้งาน (ชื่อ-นามสกุล)</span><input id="lg_user" autocomplete="username" placeholder="เช่น สุดา ใจงาม" required value="${esc(S.lgUser||"")}"></label>
-    <label class="field"><span>รหัสผ่าน (เลขบัตรประชาชน 13 หลัก หรือรหัสที่ตั้งเอง)</span><div class="pw"><input id="lg_pw" type="password" autocomplete="current-password" required><button type="button" class="ghost small" data-act="pw-toggle">แสดง</button></div></label>
+    <label class="field"><span>รหัสผ่าน (เริ่มต้น 123456 หรือรหัสที่ตั้งเอง)</span><div class="pw"><input id="lg_pw" type="password" autocomplete="current-password" required><button type="button" class="ghost small" data-act="pw-toggle">แสดง</button></div></label>
     <button type="submit" class="primary" id="lg_btn" ${S.busy?"disabled":""}>${S.busy?"กำลังตรวจสอบ…":"เข้าสู่ระบบ"}</button>
     <p class="muted" style="font-size:.85rem;margin:0">ลืมรหัสผ่าน ติดต่อเจ้าหน้าที่ HR เพื่อรีเซ็ตรหัสผ่าน</p></form></div>`;
 }
@@ -1317,8 +1317,7 @@ document.addEventListener("submit", async ev => {
     captureStaffForm(); const e=S.editStaff;
     if(!e.name.trim()){ toast("กรอกชื่อ-สกุล"); return; }
     const cid=(e.cid||"").replace(/\D/g,"");
-    if(!e.id && cid.length!==13){ toast("กรอกเลขบัตรประชาชน 13 หลัก เพื่อใช้เป็นรหัสผ่านเริ่มต้น"); document.getElementById("s_cid")?.focus(); return; }
-    if(e.id && cid && cid.length!==13){ toast("เลขบัตรประชาชนต้องมี 13 หลัก"); return; }
+    if(cid && cid.length!==13){ toast("เลขบัตรประชาชนต้องมี 13 หลัก"); return; }
     try{
       await call("saveStaff", {id:e.id, name:e.name.trim(), position:e.position.trim(), level:e.level||"", group:e.group.trim(), section:e.section.trim(), ptype:e.ptype, role:e.role, cid});
       toast(e.id?"บันทึกข้อมูลบุคลากรแล้ว":"เพิ่มบุคลากรแล้ว"); S.editStaff=null; render();
@@ -1342,7 +1341,7 @@ document.addEventListener("submit", async ev => {
   }
   else if(f.id==="resetForm"){
     const cid=document.getElementById("r_cid").value.replace(/\D/g,"");
-    if(cid.length!==13){ toast("เลขบัตรประชาชนต้องมี 13 หลัก"); return; }
+    if(cid && cid.length!==13){ toast("เลขบัตรประชาชนต้องมี 13 หลัก"); return; }
     const nm=S.staff.get(S.resetFor)?.name||"";
     try{ await call("resetPassword", S.resetFor, cid); S.resetFor=null; render(); toast(`รีเซ็ตรหัสผ่านของ ${nm} แล้ว`); }catch(e){}
   }

@@ -1,6 +1,6 @@
 /**
  * ระบบวันลาบุคลากร — Google Apps Script (ฝั่งเซิร์ฟเวอร์)
- * ผู้ใช้งาน = ชื่อ-นามสกุล, รหัสผ่านเริ่มต้น = เลขบัตรประชาชน 13 หลัก
+ * ผู้ใช้งาน = ชื่อ-นามสกุล, รหัสผ่านเริ่มต้น = 123456 (DEFAULT_PW) หรือเลขบัตรประชาชนถ้า HR กรอกไว้
  * เลขบัตรและรหัสผ่านเก็บแบบเข้ารหัสทางเดียว (salted SHA-256) ไม่เก็บตัวเลขจริง
  */
 
@@ -31,6 +31,7 @@ var DEFAULT_TYPES = [
 var DEFAULT_HOLIDAYS = []; // HR เพิ่มวันหยุดราชการเองในหน้าตั้งค่า หรือในชีต วันหยุด
 var KIND_CODES = { sick: 1, personal: 1, vacation: 1 };
 var KIND_ALIASES = { 'ลาป่วย': 'sick', 'ลากิจ': 'personal', 'ลากิจส่วนตัว': 'personal', 'ลาพักผ่อน': 'vacation' };
+var DEFAULT_PW = '123456'; // รหัสผ่านเริ่มต้นของทุกคน (ไม่ใช้เลขบัตรประชาชน) — ระบบแนะนำให้เปลี่ยนหลังเข้าครั้งแรก
 var SESSION_SECONDS = 6 * 60 * 60;
 var MAX_FAILS = 5;
 
@@ -38,7 +39,7 @@ var MAX_FAILS = 5;
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('ระบบวันลา')
     .addItem('1) ตั้งค่าเริ่มต้นระบบ (ทำครั้งแรกครั้งเดียว)', 'setupSystem')
-    .addItem('2) เข้ารหัสเลขบัตรที่กรอกในชีตบุคลากร', 'menuHashPending')
+    .addItem('2) ตั้งรหัสผ่านให้บุคลากรที่วางลงชีต (เริ่มต้น 123456)', 'menuHashPending')
     .addItem('3) นำเข้าเลขบัตรจากไฟล์รายชื่อบุคลากร', 'menuImportCids')
     .addSeparator()
     .addItem('ดูลิงก์เข้าใช้งานระบบ', 'menuShowUrl')
@@ -197,19 +198,19 @@ function setupSystem() {
   if (staffRows_().filter(function (r) { return r.role === 'HR'; }).length === 0) {
     var n = ui.prompt('สร้างบัญชีผู้ดูแล (HR) คนแรก', 'กรอกชื่อ-นามสกุลของคุณ (เช่น นางสาวสุดา ใจงาม)', ui.ButtonSet.OK_CANCEL);
     if (n.getSelectedButton() !== ui.Button.OK) return;
-    var c = ui.prompt('สร้างบัญชีผู้ดูแล (HR) คนแรก', 'กรอกเลขบัตรประชาชน 13 หลัก (ใช้เป็นรหัสผ่านเริ่มต้น)', ui.ButtonSet.OK_CANCEL);
+    var c = ui.prompt('สร้างบัญชีผู้ดูแล (HR) คนแรก', 'รหัสผ่านเริ่มต้น: เว้นว่างแล้วกด OK = ' + DEFAULT_PW + ' (หรือกรอกเลขบัตรประชาชน 13 หลักเพื่อใช้แทน)', ui.ButtonSet.OK_CANCEL);
     if (c.getSelectedButton() !== ui.Button.OK) return;
     var cid = digits_(c.getResponseText());
-    if (!validCid_(cid)) { ui.alert('เลขบัตรประชาชนไม่ถูกต้อง กรุณาเรียกเมนูนี้ใหม่อีกครั้ง'); return; }
+    if (cid && !validCid_(cid)) { ui.alert('เลขบัตรประชาชนไม่ถูกต้อง กรุณาเรียกเมนูนี้ใหม่อีกครั้ง'); return; }
     var salt = Utilities.getUuid();
-    appendStaff_({ name: n.getResponseText().trim(), position: '', level: '', group: 'กลุ่มงานบริหารทรัพยากรบุคคล', section: '', ptype: 'gov', role: 'HR' }, salt, hash_(salt, cid));
+    appendStaff_({ name: n.getResponseText().trim(), position: '', level: '', group: 'กลุ่มงานบริหารทรัพยากรบุคคล', section: '', ptype: 'gov', role: 'HR' }, salt, hash_(salt, cid || DEFAULT_PW));
   }
-  ui.alert('ตั้งค่าเสร็จแล้ว\n\nขั้นต่อไป: เมนู ส่วนขยาย → Apps Script → ปุ่ม "ทำให้ใช้งานได้" (Deploy) → การทำให้ใช้งานได้รายการใหม่ → เว็บแอป\n• เรียกใช้ในฐานะ: ฉัน\n• ผู้ที่มีสิทธิ์เข้าถึง: ทุกคน');
+  ui.alert('ตั้งค่าเสร็จแล้ว (รหัสผ่านเริ่มต้นของบุคลากร = ' + DEFAULT_PW + ')\n\nขั้นต่อไป: เมนู ส่วนขยาย → Apps Script → ปุ่ม "ทำให้ใช้งานได้" (Deploy) → การทำให้ใช้งานได้รายการใหม่ → เว็บแอป\n• เรียกใช้ในฐานะ: ฉัน\n• ผู้ที่มีสิทธิ์เข้าถึง: ทุกคน');
 }
 
 function menuHashPending() {
   var n = withLock_(hashPending_);
-  SpreadsheetApp.getUi().alert(n ? ('เข้ารหัสเลขบัตรแล้ว ' + n + ' คน และลบเลขบัตรออกจากชีตแล้ว') : 'ไม่มีเลขบัตรที่รอเข้ารหัส');
+  SpreadsheetApp.getUi().alert(n ? ('ตั้งรหัสผ่านเริ่มต้นแล้ว ' + n + ' คน\nคนที่ไม่ได้กรอกเลขบัตรใช้รหัสผ่าน ' + DEFAULT_PW + '\n(ถ้ามีการกรอกเลขบัตร ระบบลบออกจากชีตแล้ว)') : 'ไม่มีบุคลากรที่รอตั้งรหัสผ่าน');
 }
 
 // ไฟล์ "รายชื่อบุคลากร 39 คน (สำหรับนำเข้าระบบวันลา)" — เลขบัตรอ่านตรงจากไฟล์ ไม่ผ่านคนกลาง และไม่เก็บตัวเลขจริง
@@ -326,7 +327,7 @@ function login(username, password) {
   var cache = CacheService.getScriptCache();
   var fails = Number(cache.get(key) || 0);
   if (fails >= MAX_FAILS) throw new Error('ใส่รหัสผิดเกิน ' + MAX_FAILS + ' ครั้ง กรุณารอ 15 นาทีแล้วลองใหม่');
-  if (staffRows_().some(function (r) { return r.pendingCid || !r.id; })) withLock_(hashPending_);
+  if (staffRows_().some(function (r) { return r.pendingCid || !r.id || !r.hash; })) withLock_(hashPending_);
   repairLeaveIds_();
   var want = normName_(username);
   var pw = String(password || '');
@@ -403,9 +404,8 @@ function saveStaff(token, st) {
       }
       if (r.name !== name) renameInSheet_(SH.LEAVES, 2, 3, r.id, name), renameInSheet_(SH.CARRY, 1, 2, r.id, name);
     } else {
-      if (!cid) throw new Error('กรอกเลขบัตรประชาชนเพื่อใช้เป็นรหัสผ่านเริ่มต้น');
       var salt2 = Utilities.getUuid();
-      var nid = appendStaff_({ name: name, position: st.position, level: st.level, group: st.group, section: st.section, ptype: ptype, role: role }, salt2, hash_(salt2, cid));
+      var nid = appendStaff_({ name: name, position: st.position, level: st.level, group: st.group, section: st.section, ptype: ptype, role: role }, salt2, hash_(salt2, cid || DEFAULT_PW));
       // บุคลากรใหม่ไม่มีวันลาพักผ่อนสะสมจากปีก่อน: บันทึกยอดยกมา 0 ไม่ให้ระบบคำนวณย้อนไปถึงปีเริ่มต้น
       var fyNow = fyOf_(Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd'));
       if (fyNow > (Number(getSetting_('startFY')) || 2570)) sheet_(SH.CARRY).appendRow([nid, name, fyNow, '', '', 0]);
@@ -427,12 +427,12 @@ function deleteStaff(token, id) {
 
 function resetPassword(token, id, cid) {
   var s = requireHR_(token);
-  cid = digits_(cid);
-  if (!validCid_(cid)) throw new Error('เลขบัตรประชาชนไม่ถูกต้อง');
+  cid = digits_(cid); // ไม่ระบุ = กลับเป็นรหัสผ่านเริ่มต้น DEFAULT_PW
+  if (cid && !validCid_(cid)) throw new Error('เลขบัตรประชาชนไม่ถูกต้อง');
   withLock_(function () {
     var r = findStaff_(id);
     var salt = Utilities.getUuid();
-    sheet_(SH.STAFF).getRange(r.row, 10, 1, 3).setValues([[salt, hash_(salt, cid), true]]);
+    sheet_(SH.STAFF).getRange(r.row, 10, 1, 3).setValues([[salt, hash_(salt, cid || DEFAULT_PW), true]]);
     if (r.id === s.id) rebind_(token, s, salt);
   });
   return { data: buildData_(s) };
@@ -689,7 +689,15 @@ function hashPending_() {
     if (!String(v[i][0]).trim()) { sh.getRange(i + 1, 1).setValue('s' + Utilities.getUuid().slice(0, 8)); }
     if (!String(v[i][7]).trim()) sh.getRange(i + 1, 8).setValue('บุคลากร');
     var cid = digits_(v[i][8]);
-    if (!cid) continue;
+    if (!cid) {
+      // วางรายชื่อลงชีตโดยไม่มีเลขบัตร → ตั้งรหัสผ่านเริ่มต้น DEFAULT_PW ให้
+      if (!String(v[i][10]).trim()) {
+        var s0 = Utilities.getUuid();
+        sh.getRange(i + 1, 10, 1, 3).setValues([[s0, hash_(s0, DEFAULT_PW), true]]);
+        n++;
+      }
+      continue;
+    }
     if (!validCid_(cid)) { sh.getRange(i + 1, 9).setNote('เลขบัตรไม่ถูกต้อง ตรวจสอบอีกครั้ง'); continue; }
     var salt = Utilities.getUuid();
     sh.getRange(i + 1, 9, 1, 4).setValues([['', salt, hash_(salt, cid), true]]);
