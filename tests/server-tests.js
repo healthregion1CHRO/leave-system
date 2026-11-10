@@ -309,6 +309,13 @@ window.runServerTests = function () {
     ok('rate-limited: manual update applies at once', r.updated && ver === 7, r);
     ghCode = 200;
     ok('updater not exposed to web API', !U.apiFn_('autoUpdate_') && !U.apiFn_('menuUpdateNow') && !U.apiFn_('autoUpdateTick'));
+    // google.script.run จากหน้าเว็บเรียกฟังก์ชันเมนูได้ แต่ไม่มี UI → ต้องหยุดก่อนทำอะไร
+    const getUi = u.env.SpreadsheetApp.getUi;
+    u.env.SpreadsheetApp.getUi = () => { throw new Error('Cannot call SpreadsheetApp.getUi() from this context.'); };
+    const shaBefore = u.props.get('GH_SHA'), verBefore = ver;
+    let threw = false; try { U.menuUpdateNow(); } catch (e) { threw = true; }
+    ok('menuUpdateNow from web: no reset, no new version', threw && u.props.get('GH_SHA') === shaBefore && ver === verBefore);
+    u.env.SpreadsheetApp.getUi = getUi;
   } catch (e) { out.push('CRASH4 ' + e.stack); }
   return out;
 };

@@ -75,9 +75,12 @@ function menuSetupAutoUpdate() {
   ui.alert('เปิดอัปเดตอัตโนมัติแล้ว (ตรวจทุก 10 นาที)\n\n' + updateMessage_(autoUpdate_(true)));
 }
 
+// ฟังก์ชันเมนูเรียก getUi() ก่อนทำงานเสมอ: ถ้ามีคนเรียกผ่าน google.script.run จากหน้าเว็บ /exec
+// getUi() จะ error ทันที จึงสั่งอัปเดต/สร้างเวอร์ชันใหม่จากภายนอกไม่ได้
 function menuUpdateNow() {
+  var ui = SpreadsheetApp.getUi();
   PropertiesService.getScriptProperties().deleteProperty('GH_SHA');
-  SpreadsheetApp.getUi().alert(updateMessage_(autoUpdate_(true)));
+  ui.alert(updateMessage_(autoUpdate_(true)));
 }
 
 // เรียกจากตัวตั้งเวลา (time-driven trigger)
@@ -208,8 +211,9 @@ function setupSystem() {
 }
 
 function menuHashPending() {
+  var ui = SpreadsheetApp.getUi();
   var n = withLock_(hashPending_);
-  SpreadsheetApp.getUi().alert(n ? ('เข้ารหัสเลขบัตรแล้ว ' + n + ' คน และลบเลขบัตรออกจากชีตแล้ว') : 'ไม่มีเลขบัตรที่รอเข้ารหัส');
+  ui.alert(n ? ('เข้ารหัสเลขบัตรแล้ว ' + n + ' คน และลบเลขบัตรออกจากชีตแล้ว') : 'ไม่มีเลขบัตรที่รอเข้ารหัส');
 }
 
 // ไฟล์ "รายชื่อบุคลากร 39 คน (สำหรับนำเข้าระบบวันลา)" — เลขบัตรอ่านตรงจากไฟล์ ไม่ผ่านคนกลาง และไม่เก็บตัวเลขจริง
