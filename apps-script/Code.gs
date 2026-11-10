@@ -53,7 +53,7 @@ function onOpen() {
 // ทุก 10 นาที ตรวจ commit ล่าสุดของ branch main ถ้าเปลี่ยน → ดึง Code.gs / Index.html / appsscript.json
 // มาแทนโค้ดในโปรเจกต์นี้ สร้างเวอร์ชันใหม่ และชี้เว็บแอป (ลิงก์ /exec เดิม) ไปที่เวอร์ชันนั้น
 // ต้องเปิด Google Apps Script API ที่ https://script.google.com/home/usersettings และใส่ GitHub token (อ่านอย่างเดียว)
-var GH_REPO = 'nongplasawai1-blip/leave-system';
+var GH_REPO = 'healthregion1CHRO/leave-system';
 var GH_BRANCH = 'main';
 var GH_FILES = [
   { path: 'apps-script/Code.gs', name: 'Code', type: 'SERVER_JS' },
