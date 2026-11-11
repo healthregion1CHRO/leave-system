@@ -242,46 +242,8 @@
       await login('บานเย็น แสงแก้ว', ST_CID);
       if ($('#pwForm')) await click('[data-act="pw-close"]');
       ok('staff sees own leave only', /บานเย็น/.test(text()) && !/กิตติ/.test(text()) && /ลาป่วย/.test(text()));
-      ok('staff sees cancelled leave, no HR buttons', !!$('tr.cancelled') && !$('[data-k^="rst:"]') && !$('[data-act="rv"]') && !$('[data-k^="del:"]'));
+      ok('staff sees cancelled leave, no action buttons', !!$('tr.cancelled') && !$('[data-k^="cxl:"]') && !$('[data-k^="rst:"]'));
       ok('staff has no cancel menu', $('#tabs').hidden && !/ยกเลิกวันลา ปีงบประมาณ/.test($('#app').innerText));
-
-      // ยื่นใบลา → HR อนุมัติ → ขอยกเลิก → HR ไม่อนุมัติ (มีเหตุผล)
-      const row = id => leaves().find(r => r[0] === id);
-      await click('[data-act="req-open"]');
-      ok('request form opens', !!$('#leaveForm') && !$('#f_staff_q') && !$('[data-act="req-open"]'));
-      $('input[name="f_kind"][value="vacation"]').click(); await wait();
-      await setv('#f_start_txt', '15/03/2570'); await setv('#f_end_txt', '16/03/2570');
-      ok('request form shows days + balance', /ลา\s*2\s*วันทำการ/.test($('#calcBox').innerText), $('#calcBox').innerText);
-      await setv('#f_note', 'พักผ่อนกับครอบครัว', 'input');
-      $('#leaveForm').requestSubmit(); await wait(250);
-      const req = leaves().find(r => r[5] === '2027-03-15');
-      ok('requestLeave saved as pending', req && req[18] === 'รอพิจารณา' && req[8] === 2 && req[3] === 'vacation' && !$('#leaveForm'), JSON.stringify(req));
-      ok('staff sees pending status + withdraw', /รอพิจารณา/.test($('#app').innerText) && !!$(`[data-k="wd:${req[0]}"]`) && /รอพิจารณาอีก 2 วัน/.test($('#app').innerText));
-      await click('[data-act="logout"]'); await wait(150);
-      await login('นายทดสอบ ผู้ดูแล', 'hrpass123');
-      ok('HR pending badge', ($('#tabs .tab-badge') || {}).textContent === '1');
-      await click('[data-act="tab"][data-v="pending"]');
-      ok('pending tab lists request', /บานเย็น/.test($('#app').innerText) && !!$(`[data-act="rv"][data-id="${req[0]}"][data-s="approved"]`));
-      await click(`[data-act="rv"][data-t="leave"][data-id="${req[0]}"][data-s="approved"]`); await wait(150);
-      ok('HR approve writes sheet', row(req[0])[18] === 'อนุมัติ' && row(req[0])[19] === 'นายทดสอบ ผู้ดูแล' && !$('#tabs .tab-badge'), JSON.stringify(row(req[0])));
-      await click('[data-act="logout"]'); await wait(150);
-      await login('บานเย็น แสงแก้ว', ST_CID);
-      if ($('#pwForm')) await click('[data-act="pw-close"]');
-      await click(`[data-k="cxl:${req[0]}"]`);
-      ok('staff cancel form says request', /ส่งคำขอยกเลิก/.test($('#cxlForm').innerText));
-      await setv('#cxl_reason', 'งานด่วน', 'input');
-      $('#cxlForm').requestSubmit(); await wait(250);
-      ok('requestCancel → pending, still counted', row(req[0])[14] === 'ขอยกเลิก' && row(req[0])[15] === 'งานด่วน' && !!$(`[data-act="withdraw-cancel"][data-id="${req[0]}"]`), JSON.stringify(row(req[0])));
-      await click('[data-act="logout"]'); await wait(150);
-      await login('นายทดสอบ ผู้ดูแล', 'hrpass123');
-      await click('[data-act="tab"][data-v="pending"]');
-      await click(`[data-act="rv"][data-t="cx"][data-id="${req[0]}"][data-s="rejected"]`);
-      ok('reject opens reason form', !!$('#rjForm'));
-      $('#rjForm').requestSubmit(); await wait(150);
-      ok('reject without reason blocked', row(req[0])[14] === 'ขอยกเลิก' && /เหตุผล/.test(text()));
-      await setv('#rj_reason', 'ช่วงนั้นคนพอ', 'input');
-      $('#rjForm').requestSubmit(); await wait(250);
-      ok('HR reject cancel writes sheet', row(req[0])[14] === 'ไม่อนุมัติการยกเลิก' && row(req[0])[24] === 'ช่วงนั้นคนพอ' && /ไม่มีคำขอยกเลิกที่รอพิจารณา/.test($('#app').innerText), JSON.stringify(row(req[0])));
     } catch (e) { log.push('CRASH ' + e.stack); }
     ok('no JS errors', window.__errors.length === 0, JSON.stringify(window.__errors));
     return log;

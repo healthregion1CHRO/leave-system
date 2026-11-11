@@ -16,7 +16,7 @@
   --band:#0b3a3f; --band-2:#11545a; --band-ink:#eafaf6; --band-muted:#a9cfc9;
   --accent:#0f9c7d; --accent-strong:#0a7a61; --accent-ink:#ffffff; --accent-soft:#d3f2e8;
   --sick:#d9466c; --sick-soft:#fde3ea; --vac:#1f84c9; --vac-soft:#dcedfb; --per:#b77300; --per-bar:#eea21b; --per-soft:#fdefd3;
-  --danger:#c62a1d; --danger-soft:#fde4e1; --ok:#1d7a3e; --ok-soft:#dcf3e3; --pend:#9a5b00; --pend-soft:#fff1cf;
+  --danger:#c62a1d; --danger-soft:#fde4e1; --ok:#1d7a3e;
   --shadow:0 1px 2px rgba(15,42,46,.05),0 6px 20px rgba(15,42,46,.06);
   --shadow-lg:0 2px 4px rgba(15,42,46,.06),0 14px 34px rgba(15,42,46,.10);
   --f-display:"Kanit","Sarabun","Leelawadee UI","Tahoma",sans-serif;
@@ -28,7 +28,7 @@
   --band:#08262a; --band-2:#0d3a3f; --band-ink:#e5f7f2; --band-muted:#8fbab3;
   --accent:#36d0a6; --accent-strong:#5ee0bb; --accent-ink:#06241d; --accent-soft:#163b33;
   --sick:#ff8aa6; --sick-soft:#3b1d27; --vac:#6db9f2; --vac-soft:#16304a; --per:#f4c35c; --per-bar:#f4c35c; --per-soft:#3a2e15;
-  --danger:#ff8b7d; --danger-soft:#3e1f1b; --ok:#6fd28f; --ok-soft:#173a24; --pend:#f4c35c; --pend-soft:#3a2e15;
+  --danger:#ff8b7d; --danger-soft:#3e1f1b; --ok:#6fd28f;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25); --shadow-lg:0 2px 4px rgba(0,0,0,.3),0 14px 34px rgba(0,0,0,.35);
   color-scheme:dark}}
 :root[data-theme="dark"]{
@@ -36,7 +36,7 @@
   --band:#08262a; --band-2:#0d3a3f; --band-ink:#e5f7f2; --band-muted:#8fbab3;
   --accent:#36d0a6; --accent-strong:#5ee0bb; --accent-ink:#06241d; --accent-soft:#163b33;
   --sick:#ff8aa6; --sick-soft:#3b1d27; --vac:#6db9f2; --vac-soft:#16304a; --per:#f4c35c; --per-bar:#f4c35c; --per-soft:#3a2e15;
-  --danger:#ff8b7d; --danger-soft:#3e1f1b; --ok:#6fd28f; --ok-soft:#173a24; --pend:#f4c35c; --pend-soft:#3a2e15;
+  --danger:#ff8b7d; --danger-soft:#3e1f1b; --ok:#6fd28f;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25); --shadow-lg:0 2px 4px rgba(0,0,0,.3),0 14px 34px rgba(0,0,0,.35);
   color-scheme:dark}
 *{box-sizing:border-box}
@@ -191,28 +191,6 @@ td.num,th.num{text-align:right}
 .cxl-days{color:var(--muted)}.cxl-days.bad{color:var(--danger)}
 tr.cancelled td.strike{text-decoration:line-through;color:var(--muted)}
 .cxl-note{color:var(--danger)}
-/* การพิจารณา: รอพิจารณา (เหลือง) · อนุมัติ (เขียว) · ไม่อนุมัติ (แดง) */
-.pill.s-pending{background:var(--pend-soft);color:var(--pend)}
-.pill.s-approved{background:var(--ok-soft);color:var(--ok)}
-.pill.s-rejected{background:var(--danger-soft);color:var(--danger)}
-.pill.s-pending::before,.pill.s-approved::before,.pill.s-rejected::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface);vertical-align:middle}
-.seg button{border:0;border-radius:0;padding:5px 12px;font-size:.84rem;background:transparent;color:var(--muted);border-left:1px solid var(--line)}
-.seg button:first-child{border-left:0}
-.seg button:hover{background:var(--surface-2);color:var(--ink);border-color:var(--line)}
-.seg button[aria-pressed="true"].pending{background:var(--pend-soft);color:var(--pend);font-weight:600}
-.seg button[aria-pressed="true"].approved{background:var(--ok-soft);color:var(--ok);font-weight:600}
-.seg button[aria-pressed="true"].rejected{background:var(--danger-soft);color:var(--danger);font-weight:600}
-.rv-stack{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
-.rv-lbl{font-size:.76rem;color:var(--muted)}
-.rj-form{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}
-.rj-form input{min-width:200px;padding:5px 8px}
-.by{display:block;font-size:.78rem;color:var(--muted)}
-.reason{display:block;font-size:.8rem;color:var(--danger);white-space:normal}
-tr.is-pending{background:color-mix(in srgb,var(--pend-soft) 40%,transparent)}
-tr.rejected td.strike{text-decoration:line-through;color:var(--muted)}
-nav.tabs .tab-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:999px;background:var(--pend-soft);color:var(--pend);font-size:.74rem;margin-left:6px;padding:0 6px;font-weight:700}
-.stat.pend{--c:var(--pend);--c-soft:var(--pend-soft)}
 .ico{width:16px;height:16px;flex:0 0 auto}
 .userbox{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .userbox .who{display:flex;flex-direction:column;line-height:1.2;text-align:right;margin-right:4px}
@@ -540,12 +518,9 @@ function applyData(d){
   S.me = d.me; S.isHR = !!d.isHR;
   S.config = {...DEFAULT_CONFIG, ...d.config, types: Object.keys(d.config.types||{}).length ? d.config.types : DEFAULT_CONFIG.types};
   const m = new Map();
-  for(const st of d.staff) m.set(st.id, {...st, leaves:[], cancelled:[], pending:[], rejected:[], carry:{}, carryK:{sick:{}, personal:{}}});
-  // p.leaves = นับเป็นวันลาที่ใช้ไป (อนุมัติแล้วและไม่ได้ยกเลิก)
-  // p.cancelled = ยกเลิกแล้ว · p.pending = รอพิจารณา · p.rejected = ไม่อนุมัติ → แสดงในประวัติ แต่ไม่นับ
-  for(const l of d.leaves){ const p=m.get(l.staffId); if(!p) continue;
-    if(!l.status) l.status="approved"; if(l.cx==null) l.cx=l.cancelled?"approved":"";
-    (l.cancelled?p.cancelled:l.status==="pending"?p.pending:l.status==="rejected"?p.rejected:p.leaves).push(l); }
+  for(const st of d.staff) m.set(st.id, {...st, leaves:[], cancelled:[], carry:{}, carryK:{sick:{}, personal:{}}});
+  // รายการที่ยกเลิกแล้วแยกไว้ใน p.cancelled: แสดงในประวัติ แต่ไม่นับเป็นวันลาที่ใช้ไป
+  for(const l of d.leaves){ const p=m.get(l.staffId); if(p) (l.cancelled?p.cancelled:p.leaves).push(l); }
   for(const c of d.carry){ const p=m.get(c.staffId); if(!p) continue;
     if(c.vacation!=null) p.carry[c.fy]=c.vacation; if(c.sick!=null) p.carryK.sick[c.fy]=c.sick; if(c.personal!=null) p.carryK.personal[c.fy]=c.personal; }
   S.staff = m; S.staffLoaded = true;
@@ -567,7 +542,7 @@ async function call(fn, ...args){
 }
 function saveToken(t){ try{ if(t) sessionStorage.setItem("leave.token", t); else sessionStorage.removeItem("leave.token"); }catch(e){} }
 function doLogout(silent){
-  const t=S.token; S.token=null; saveToken(null); S.staff=new Map(); S.myDoc=null; S.me=null; S.isHR=false; S.view="summary"; S.editStaff=null; S.delStaff=null; S.pwModal=null; S.resetFor=null; S.reqOpen=false; S.draft=null; S.confirmKey=null;
+  const t=S.token; S.token=null; saveToken(null); S.staff=new Map(); S.myDoc=null; S.me=null; S.isHR=false; S.view="summary"; S.editStaff=null; S.delStaff=null; S.pwModal=null; S.resetFor=null;
   if(t && !silent) gas("logout",[t]).catch(()=>{});
   render();
 }
@@ -575,14 +550,13 @@ function doLogout(silent){
 // ---------- rendering ----------
 function fyOptions(){
   const now = fyOf(todayIso()); const set = new Set([now, now-1, now+1, Number(S.config.startFY)||now]);
-  for(const p of S.staff.values()) for(const l of allLeaves(p)) set.add(l.fy);
+  for(const p of S.staff.values()) for(const l of [...(p.leaves||[]), ...(p.cancelled||[])]) set.add(l.fy);
   const list=[...set].filter(Boolean).sort((a,b)=>b-a);
   $fy.innerHTML = list.map(f=>`<option value="${f}" ${f===S.fy?"selected":""}>${f}</option>`).join("");
 }
 function tabsHtml(){
-  const t = [["summary","สรุปรายบุคคล"],["pending","รอพิจารณา"],["calendar","ปฏิทินการลา"],["record","บันทึกการลา"],["staff","รายชื่อบุคลากร"],["cancel","ยกเลิกวันลา"],["accounts","บัญชีผู้ใช้"],["settings","ตั้งค่าสิทธิ์และวันหยุด"]];
-  const pi = pendingItems(), n = pi.lv.length + pi.cx.length;
-  return t.map(([k,l])=>`<button data-act="tab" data-v="${k}" ${S.view===k||(S.view==="person"&&k==="summary")?'aria-current="page"':""}>${l}${k==="pending"&&n?`<span class="tab-badge" aria-label="${n} รายการ">${n}</span>`:""}</button>`).join("");
+  const t = [["summary","สรุปรายบุคคล"],["calendar","ปฏิทินการลา"],["record","บันทึกการลา"],["staff","รายชื่อบุคลากร"],["cancel","ยกเลิกวันลา"],["accounts","บัญชีผู้ใช้"],["settings","ตั้งค่าสิทธิ์และวันหยุด"]];
+  return t.map(([k,l])=>`<button data-act="tab" data-v="${k}" ${S.view===k||(S.view==="person"&&k==="summary")?'aria-current="page"':""}>${l}</button>`).join("");
 }
 function usageCell(b, kind){
   const pct = b.quota>0 ? Math.min(100, b.used/b.quota*100) : (b.used>0?100:0);
@@ -607,60 +581,9 @@ function cxlFormHtml(l){
       <label>ถึง <select id="cxl_to" aria-label="ยกเลิกถึงวันที่">${opts(dates[dates.length-1])}</select></label>
       <span class="cxl-days" id="cxl_days">ยกเลิก ${fmtN(l.days)} วันทำการ (ทั้งรายการ)</span></div>`:"";
   return `<form class="confirm cxl-form" id="cxlForm" data-id="${id}">${range}<input id="cxl_reason" maxlength="500" placeholder="เหตุผลการยกเลิก (จำเป็น)" aria-label="เหตุผลการยกเลิกวันลา" required>
-      <button type="submit" class="small danger">${S.isHR?"ยืนยันยกเลิกวันลา":"ส่งคำขอยกเลิก"}</button><button type="button" class="small ghost" data-act="cancel">ปิด</button></form>`;
+      <button type="submit" class="small danger">ยืนยันยกเลิกวันลา</button><button type="button" class="small ghost" data-act="cancel">ปิด</button></form>`;
 }
-function findLeave(id){ for(const p of S.staff.values()) for(const l of allLeaves(p)) if(l.id===id) return l; return null; }
-// ---------- การพิจารณาใบลาและคำขอยกเลิก ----------
-function allLeaves(p){ return [...(p.leaves||[]), ...(p.cancelled||[]), ...(p.pending||[]), ...(p.rejected||[])]; }
-const ST_LABEL = {pending:"รอพิจารณา", approved:"อนุมัติ", rejected:"ไม่อนุมัติ"};
-const stPill = (s, pre="") => `<span class="pill s-${s}">${pre}${ST_LABEL[s]}</span>`;
-function pendingItems(){
-  const lv=[], cx=[];
-  for(const p of staffList()) for(const l of allLeaves(p)){ if(l.status==="pending") lv.push({...l,_p:p}); if(l.cx==="pending") cx.push({...l,_p:p}); }
-  const by=(a,b)=>a.start.localeCompare(b.start);
-  return {lv:lv.sort(by), cx:cx.sort(by)};
-}
-// ปุ่ม 3 สถานะ (เฉพาะ HR): t = "leave" (ใบลา) | "cx" (คำขอยกเลิก) · กดไม่อนุมัติ → ฟอร์มเหตุผล
-function reviewSeg(l, t){
-  const cur = t==="cx" ? l.cx : l.status, key = `rj:${t}:${l.id}`;
-  const btns = ["pending","approved","rejected"].map(s=>`<button type="button" class="${s}" aria-pressed="${cur===s}" data-act="rv" data-t="${t}" data-s="${s}" data-id="${esc(l.id)}">${ST_LABEL[s]}</button>`).join("");
-  const form = S.confirmKey===key ? `<form class="rj-form" id="rjForm" data-t="${t}" data-id="${esc(l.id)}"><input id="rj_reason" maxlength="500" placeholder="เหตุผลที่ไม่อนุมัติ (จำเป็น)" aria-label="เหตุผลที่ไม่อนุมัติ" required>
-    <button type="submit" class="small danger">ยืนยันไม่อนุมัติ</button><button type="button" class="small ghost" data-act="cancel">ปิด</button></form>` : "";
-  return `<div class="seg" role="group" aria-label="${t==="cx"?"พิจารณาคำขอยกเลิก":"พิจารณาใบลา"}">${btns}</div>${form}`;
-}
-const cxRange = l => l.cxFrom ? `${thDate(l.cxFrom)}${l.cxTo&&l.cxTo!==l.cxFrom?" – "+thDate(l.cxTo):""}` : "ทั้งรายการ";
-// คอลัมน์สถานะ: ผลพิจารณาใบลา + คำขอยกเลิก (ถ้ามี)
-function statusCell(l){
-  let h = stPill(l.status);
-  if(l.status!=="pending" && l.reviewedBy) h += `<span class="by">${esc(l.reviewedBy)}${l.reviewedAt?" · "+thDate(l.reviewedAt):""}</span>`;
-  if(l.status==="rejected" && l.rejectReason) h += `<span class="reason">เหตุผล: ${esc(l.rejectReason)}</span>`;
-  if(l.cx){
-    h += `<div style="margin-top:6px">${stPill(l.cx, "ขอยกเลิก · ")}</div>`;
-    if(l.cx==="pending") h += `<span class="by">ขอยกเลิก ${cxRange(l)}${l.cancelledAt?" · "+thDate(l.cancelledAt):""}</span>`;
-    if(l.cx==="rejected" && l.cxRejectReason) h += `<span class="reason">เหตุผล: ${esc(l.cxRejectReason)}</span>`;
-  }
-  return h;
-}
-function pendingDays(p, fy, kind){ return (p.pending||[]).filter(l=>l.fy===fy && l.kind===kind).reduce((s,l)=>s+Number(l.days||0),0); }
-function viewPending(){
-  const {lv, cx} = pendingItems();
-  const who=l=>`<div class="name-cell"><span class="av" aria-hidden="true">${esc(initial(l._p.name))}</span><span class="nm"><button class="linklike" data-act="person" data-id="${esc(l._p._id)}">${esc(l._p.name)}</button><small>${esc(orgLine(l._p)||posLine(l._p)||"")}</small></span></div>`;
-  const pill=l=>{ const K=KINDS[l.kind]||{cls:"neutral",label:esc(l.kind||"?")}; return `<span class="pill ${K.cls}">${K.label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}`; };
-  const range=l=>`${thDate(l.start)}${l.end!==l.start?" – "+thDate(l.end):""}${halfTxt(l)?` <small class="muted">(${halfTxt(l)})</small>`:""}`;
-  const left=l=>{ const b=balances(l._p, l.fy)[l.kind]; return b?`<span class="by">คงเหลือ ${fmtN(b.left)} วัน${b.left-Number(l.days||0)<0?` · <b style="color:var(--danger)">เกินสิทธิ์</b>`:""}</span>`:""; };
-  const head=last=>`<thead><tr><th>ชื่อ-สกุล</th><th>ประเภท</th><th>วันที่ลา</th><th class="num">วันทำการ</th><th>${last}</th><th>การพิจารณา</th></tr></thead>`;
-  const rowsL=lv.map(l=>`<tr class="is-pending"><td>${who(l)}</td><td>${pill(l)}</td><td>${range(l)}</td><td class="num">${fmtN(l.days)}${left(l)}</td>
-    <td style="white-space:normal;min-width:160px">${esc(l.note||"-")}${l.docNo?`<br><small class="muted">เลขที่ ${esc(l.docNo)}</small>`:""}<span class="by">ยื่นโดย ${esc(l.recordedBy||l._p.name)}</span></td><td>${reviewSeg(l,"leave")}</td></tr>`).join("");
-  const rowsC=cx.map(l=>`<tr class="is-pending"><td>${who(l)}</td><td>${pill(l)}</td><td>${range(l)}</td><td class="num">${fmtN(l.days)}</td>
-    <td style="white-space:normal;min-width:160px">${esc(l.cancelReason||"-")}<span class="by">ยกเลิก${cxRange(l)==="ทั้งรายการ"?"ทั้งรายการ":" "+cxRange(l)} · ขอเมื่อ ${thDate(l.cancelledAt)}</span></td><td>${reviewSeg(l,"cx")}</td></tr>`).join("");
-  return `<div><h2>รอพิจารณา</h2><span class="muted">กดปุ่มที่รายการเพื่อเปลี่ยนสถานะ ถ้าเลือก “ไม่อนุมัติ” ต้องระบุเหตุผล · นับเป็นวันลาเฉพาะรายการที่อนุมัติ</span></div>
-  <div class="stats"><div class="stat pend"><span class="lbl"><i></i>ใบลารอพิจารณา</span><span class="val">${lv.length}<small>รายการ</small></span></div>
-    <div class="stat pend"><span class="lbl"><i></i>คำขอยกเลิกรอพิจารณา</span><span class="val">${cx.length}<small>รายการ</small></span></div></div>
-  <h3>ใบลา <span class="muted cx-count">(${lv.length})</span></h3>
-  ${lv.length?`<div class="tbl-wrap"><table>${head("หมายเหตุ")}<tbody>${rowsL}</tbody></table></div>`:`<div class="panel empty"><h3>ไม่มีใบลาที่รอพิจารณา</h3></div>`}
-  <h3>คำขอยกเลิกวันลา <span class="muted cx-count">(${cx.length})</span></h3>
-  ${cx.length?`<div class="tbl-wrap"><table>${head("เหตุผลที่ขอยกเลิก")}<tbody>${rowsC}</tbody></table></div>`:`<div class="panel empty"><h3>ไม่มีคำขอยกเลิกที่รอพิจารณา</h3></div>`}`;
-}
+function findLeave(id){ for(const p of S.staff.values()) for(const l of [...(p.leaves||[]), ...(p.cancelled||[])]) if(l.id===id) return l; return null; }
 function cxlRead(){
   const f=document.getElementById("cxlForm"); const l=f&&findLeave(f.dataset.id); if(!l) return null;
   const fe=document.getElementById("cxl_from"), te=document.getElementById("cxl_to");
@@ -678,21 +601,18 @@ function cxlUpdate(){
 // เมนูยกเลิกวันลา: เลือกประเภทการลา/บุคลากร แล้วยกเลิกหรือคืนสถานะ (ใช้ฟอร์ม cxlForm และปุ่ม restore-leave เดิม)
 function viewCancel(){
   const fy=S.fy, kind=S.cxKind||"all", sid=S.cxStaff||"all", q=(S.cxQ||"").trim().toLowerCase();
-  const all=[]; for(const p of staffList()) for(const l of allLeaves(p)) if(l.fy===fy) all.push({...l, _p:p});
+  const all=[]; for(const p of staffList()) for(const l of [...(p.leaves||[]), ...(p.cancelled||[])]) if(l.fy===fy) all.push({...l, _p:p});
   const match=l=>(kind==="all"||l.kind===kind)&&(sid==="all"||l._p._id===sid)&&(!q||`${l._p.name} ${l.note||""} ${l.docNo||""} ${l.cancelReason||""}`.toLowerCase().includes(q));
-  // คำขอยกเลิกที่รอพิจารณาขึ้นก่อน
-  const act=all.filter(l=>!l.cancelled&&l.status==="approved"&&match(l)).sort((a,b)=>(b.cx==="pending")-(a.cx==="pending")||b.start.localeCompare(a.start));
+  const act=all.filter(l=>!l.cancelled&&match(l)).sort((a,b)=>b.start.localeCompare(a.start));
   const hist=all.filter(l=>l.cancelled&&match(l)).sort((a,b)=>String(b.cancelledAt||"").localeCompare(String(a.cancelledAt||""))||b.start.localeCompare(a.start));
   const st=k=>{ const x=all.filter(l=>l.cancelled&&(k==="all"||l.kind===k)); return {n:x.length,d:x.reduce((s,l)=>s+Number(l.days||0),0)}; };
   const tile=(k,cls,lbl)=>{ const v=st(k); return `<button type="button" class="stat ${cls} cx-tile ${kind===k?"on":""}" data-act="cx-kind" data-k="${k}" aria-pressed="${kind===k}"><span class="lbl"><i></i>${lbl}</span><span class="val">${v.n}<small>ครั้ง · ${fmtN(v.d)} วัน</small></span></button>`; };
-  const pill=l=>{ const K=KINDS[l.kind]||{cls:"neutral",label:esc(l.kind||"?")}; return `<span class="pill ${K.cls}">${K.label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}${l.cx&&l.cx!=="approved"?`<br>${stPill(l.cx,"ขอยกเลิก · ")}`:""}`; };
+  const pill=l=>{ const K=KINDS[l.kind]||{cls:"neutral",label:esc(l.kind||"?")}; return `<span class="pill ${K.cls}">${K.label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}`; };
   const who=l=>`<div class="name-cell"><span class="av" aria-hidden="true">${esc(initial(l._p.name))}</span><span class="nm"><b>${esc(l._p.name)}</b><small>${esc(orgLine(l._p)||posLine(l._p)||"")}</small></span></div>`;
   const range=l=>`${thDate(l.start)}${l.end!==l.start?" – "+thDate(l.end):""}${l.half&&l.half!=="full"?` <small class="muted">(${l.half==="am"?"ครึ่งเช้า":"ครึ่งบ่าย"})</small>`:""}`;
   const pa=paginate(act,"cxa","รายการ"), ph=paginate(hist,"cxh","รายการ");
   const actBtn=l=>{ const id=esc(l.id);
     if(S.confirmKey==="cxl:"+l.id) return cxlFormHtml(l);
-    if(l.cx==="pending"||l.cx==="rejected") return `<div class="rv-stack"><span class="rv-lbl">ขอยกเลิก ${cxRange(l)} โดย ${esc(l.cancelledBy||"-")}: ${esc(l.cancelReason||"-")}</span>${reviewSeg(l,"cx")}
-      ${l.cx==="rejected"&&l.cxRejectReason?`<span class="reason">ไม่อนุมัติ: ${esc(l.cxRejectReason)}</span>`:""}</div>`;
     return `<button class="small ghost" data-act="ask" data-k="cxl:${id}">ยกเลิกวันลา</button>`; };
   const rstBtn=l=>{ const id=esc(l.id);
     if(S.confirmKey==="rst:"+l.id) return `<span class="confirm"><button class="small primary" data-act="restore-leave" data-id="${id}">ยืนยันคืนสถานะ</button><button class="small ghost" data-act="cancel">ปิด</button></span>`;
@@ -732,8 +652,6 @@ function viewSummary(){
     const flags = [];
     if(!p.hasPassword) flags.push(`<span class="pill neutral">ยังไม่มีรหัสผ่าน</span>`);
     if(b.personal.emergency) flags.push(`<span class="pill k-per">ฉุกเฉิน ${b.personal.emergency} ครั้ง</span>`);
-    const np = allLeaves(p).filter(l=>l.status==="pending"||l.cx==="pending").length;
-    if(np) flags.push(`<span class="pill s-pending">รอพิจารณา ${np}</span>`);
     return `<tr class="click" data-act="person" data-id="${esc(p._id)}" tabindex="0">
       <td class="no">${pg.start+i+1}</td><td><div class="name-cell"><span class="av" aria-hidden="true">${esc(initial(p.name))}</span><span class="nm"><b>${esc(p.name)}</b><small>${esc(posLine(p))}${orgLine(p)?" · "+esc(orgLine(p)):""}</small></span></div></td>
       <td>${esc(typeCfg(p).label)}</td>
@@ -780,43 +698,29 @@ function balanceCards(p, fy){
         <dt class="sum">รวมสิทธิ์ปีนี้</dt><dd class="sum">${fmtN(x.quota)} วัน</dd>
         <span class="sec">วันที่ลาไปแล้ว</span>
         <dt>ประจำปี (ปีงบ ${fy})</dt><dd>${fmtN(x.used)} วัน · ${x.count} ครั้ง</dd>
-        <dt>สะสมทุกปี (ถึงปีงบ ${fy})</dt><dd>${fmtN(x.cum)} วัน · ${x.cumCount} ครั้ง</dd></dl>${extra||""}
-      ${pendingDays(p,fy,k)?`<div class="meta"><span style="color:var(--pend)">รอพิจารณาอีก ${fmtN(pendingDays(p,fy,k))} วัน (ยังไม่หักวันลา)</span></div>`:""}</div>`;
+        <dt>สะสมทุกปี (ถึงปีงบ ${fy})</dt><dd>${fmtN(x.cum)} วัน · ${x.cumCount} ครั้ง</dd></dl>${extra||""}</div>`;
   };
   const vacExtra = `<div class="meta"><span>ยอดยกมาอัตโนมัติรวมกับปีนี้ได้ไม่เกิน ${b.vacation.cap} วัน</span></div>`;
   const perExtra = b.personal.emergency?`<div class="meta"><span>ในปีนี้เป็นลากิจฉุกเฉิน ${b.personal.emergency} ครั้ง</span></div>`:"";
   return `<div class="balances">${card("sick")}${card("personal",perExtra)}${card("vacation",vacExtra)}</div>`;
 }
 function leaveTable(p, fy, editable){
-  const ls = allLeaves(p).filter(l=>l.fy===fy).sort((a,b)=>b.start.localeCompare(a.start));
-  if(!ls.length) return `<div class="panel empty"><h3>ไม่มีรายการลาในปีงบประมาณ ${fy}</h3><p>${editable?"กด “บันทึกการลา” เพื่อเพิ่มรายการ":"กด “ยื่นใบลา” เพื่อส่งใบลาให้ HR พิจารณา"}</p></div>`;
-  // HR: ปุ่มพิจารณาใบลา / คำขอยกเลิก + ยกเลิก คืนสถานะ ลบ
-  const hrActions = l => {
+  const ls = [...(p.leaves||[]), ...(p.cancelled||[])].filter(l=>l.fy===fy).sort((a,b)=>b.start.localeCompare(a.start));
+  if(!ls.length) return `<div class="panel empty"><h3>ไม่มีรายการลาในปีงบประมาณ ${fy}</h3><p>${editable?"กด “บันทึกการลา” เพื่อเพิ่มรายการ":"เมื่อ HR บันทึกการลาของคุณ รายการจะแสดงที่นี่"}</p></div>`;
+  const actions = l => {
     const id=esc(l.id), k=S.confirmKey;
     if(k==="del:"+l.id) return `<span class="confirm"><button class="small danger" data-act="del-leave" data-id="${id}">ยืนยันลบ</button><button class="small ghost" data-act="cancel">ไม่ลบ</button></span>`;
     if(k==="cxl:"+l.id) return cxlFormHtml(l);
     if(k==="rst:"+l.id) return `<span class="confirm"><button class="small primary" data-act="restore-leave" data-id="${id}">ยืนยันคืนสถานะ</button><button class="small ghost" data-act="cancel">ปิด</button></span>`;
-    const more = l.cancelled ? `<button class="small ghost" data-act="ask" data-k="rst:${id}">คืนสถานะ</button>`
-      : l.status==="approved" && l.cx!=="pending" ? `<button class="small ghost" data-act="ask" data-k="cxl:${id}">ยกเลิกวันลา</button>` : "";
-    return `<div class="rv-stack">${l.cancelled?"":reviewSeg(l,"leave")}${l.cx?`<span class="rv-lbl">คำขอยกเลิก (${cxRange(l)})</span>${reviewSeg(l,"cx")}`:""}
-      <span class="confirm">${more}<button class="small ghost" data-act="ask" data-k="del:${id}">ลบ</button></span></div>`;
+    return `<span class="confirm">${l.cancelled
+      ?`<button class="small ghost" data-act="ask" data-k="rst:${id}">คืนสถานะ</button>`
+      :`<button class="small ghost" data-act="ask" data-k="cxl:${id}">ยกเลิกวันลา</button>`}<button class="small ghost" data-act="ask" data-k="del:${id}">ลบ</button></span>`;
   };
-  // บุคลากร: ถอนใบลาที่รอพิจารณา · ขอยกเลิกวันลาที่อนุมัติแล้ว · ถอนคำขอยกเลิก
-  const myActions = l => {
-    const id=esc(l.id), k=S.confirmKey;
-    if(k==="cxl:"+l.id) return cxlFormHtml(l);
-    if(k==="wd:"+l.id) return `<span class="confirm"><button class="small danger" data-act="withdraw-leave" data-id="${id}">ยืนยันถอนใบลา</button><button class="small ghost" data-act="cancel">ไม่ถอน</button></span>`;
-    if(l.status==="pending") return `<button class="small ghost" data-act="ask" data-k="wd:${id}">ถอนใบลา</button>`;
-    if(l.cx==="pending") return `<button class="small ghost" data-act="withdraw-cancel" data-id="${id}">ถอนคำขอยกเลิก</button>`;
-    if(l.status==="approved" && !l.cancelled) return `<button class="small ghost" data-act="ask" data-k="cxl:${id}">ขอยกเลิกวันลา</button>`;
-    return "";
-  };
-  const rowCls = l => l.cancelled ? "cancelled" : l.status==="rejected" ? "rejected" : (l.status==="pending"||l.cx==="pending") ? "is-pending" : "";
-  return `<div class="tbl-wrap"><table><thead><tr><th>ประเภท</th><th>ตั้งแต่</th><th>ถึง</th><th class="num">วันทำการ</th><th>หมายเหตุ</th><th>สถานะ</th><th>${editable?"การพิจารณา":""}</th></tr></thead><tbody>
-  ${ls.map(l=>{ const K=KINDS[l.kind]||{cls:"neutral",label:esc(l.kind||"?")}; return `<tr class="${rowCls(l)}"><td><span class="pill ${K.cls}">${K.label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}${l.cancelled?` <span class="pill neutral">ยกเลิกแล้ว</span>`:""}</td>
+  return `<div class="tbl-wrap"><table><thead><tr><th>ประเภท</th><th>ตั้งแต่</th><th>ถึง</th><th class="num">วันทำการ</th><th>หมายเหตุ</th>${editable?"<th></th>":""}</tr></thead><tbody>
+  ${ls.map(l=>{ const K=KINDS[l.kind]||{cls:"neutral",label:esc(l.kind||"?")}; return `<tr${l.cancelled?' class="cancelled"':""}><td><span class="pill ${K.cls}">${K.label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}${l.cancelled?` <span class="pill neutral">ยกเลิกแล้ว</span>`:""}</td>
     <td class="strike">${thDate(l.start)}${l.half&&l.half!=="full"?` <small class="muted">(${l.half==="am"?"ครึ่งเช้า":"ครึ่งบ่าย"})</small>`:""}</td><td class="strike">${thDate(l.end)}</td>
-    <td class="num strike">${fmtN(l.days)}</td><td style="white-space:normal;min-width:160px">${esc(l.note||"")}${l.docNo?`<br><small class="muted">เลขที่ ${esc(l.docNo)}</small>`:""}${l.cancelled?`<br><small class="cxl-note">ยกเลิก${l.cancelledAt?" "+thDate(l.cancelledAt):""}${l.cancelledBy?" โดย "+esc(l.cancelledBy):""}: ${esc(l.cancelReason||"-")}</small>`:l.cx?`<br><small class="muted">เหตุผลที่ขอยกเลิก: ${esc(l.cancelReason||"-")}</small>`:""}</td>
-    <td style="white-space:normal;min-width:150px">${statusCell(l)}</td><td>${editable?hrActions(l):myActions(l)}</td></tr>`; }).join("")}
+    <td class="num strike">${fmtN(l.days)}</td><td style="white-space:normal;min-width:160px">${esc(l.note||"")}${l.docNo?`<br><small class="muted">เลขที่ ${esc(l.docNo)}</small>`:""}${l.cancelled?`<br><small class="cxl-note">ยกเลิก${l.cancelledAt?" "+thDate(l.cancelledAt):""}${l.cancelledBy?" โดย "+esc(l.cancelledBy):""}: ${esc(l.cancelReason||"-")}</small>`:""}</td>
+    ${editable?`<td>${actions(l)}</td>`:""}</tr>`; }).join("")}
   </tbody></table></div>`;
 }
 function viewPerson(){
@@ -972,7 +876,7 @@ function staffModal(){
 }
 function deleteModal(){
   const id = S.delStaff; const p = id && S.staff.get(id); if(!p) return "";
-  const n = allLeaves(p).length;
+  const n = (p.leaves||[]).length + (p.cancelled||[]).length;
   return `<div class="overlay" data-act="overlay"><div class="modal sm" role="alertdialog" aria-modal="true" aria-labelledby="dTitle">
     <div class="m-head danger"><span class="badge">${ICON.trash}</span><h3 id="dTitle">ลบบุคลากร</h3></div>
     <div class="m-body"><p style="margin:0">ต้องการลบ <b>${esc(p.name)}</b> ออกจากระบบใช่ไหม</p>
@@ -1184,44 +1088,11 @@ function viewMine(){
   return mineHtml(S.myDoc);
 }
 function mineHtml(p){
-  return `<div class="person-head"><div><h2>การลาของฉัน</h2><span class="muted">${esc(p.name)} · ${esc(posLine(p))}${orgLine(p)?" · "+esc(orgLine(p)):""} · ${esc(typeCfg(p).label)}</span></div>
-    <span class="spacer"></span>${S.reqOpen?"":`<button class="primary" data-act="req-open">+ ยื่นใบลา</button>`}</div>
-  ${S.reqOpen?requestFormHtml(p):""}
+  return `<div class="person-head"><div><h2>การลาของฉัน</h2><span class="muted">${esc(p.name)} · ${esc(posLine(p))}${orgLine(p)?" · "+esc(orgLine(p)):""} · ${esc(typeCfg(p).label)}</span></div></div>
   <span class="muted">ปีงบประมาณ ${S.fy} (${thDate(fyRange(S.fy)[0])} – ${thDate(fyRange(S.fy)[1])}) · หน่วยเป็นวันทำการ</span>
   ${balanceCards(p, S.fy)}
   <h3>รายการลา</h3>${leaveTable(p, S.fy, false)}
-  <p class="muted" style="font-size:.85rem">ใบลาที่ยื่นจะนับเป็นวันลาเมื่อ HR อนุมัติ · ใบลาที่ยังรอพิจารณาถอนได้ · วันลาที่อนุมัติแล้วกด “ขอยกเลิกวันลา” ได้ · หากข้อมูลไม่ตรงกับใบลา โปรดติดต่อเจ้าหน้าที่ HR</p>`;
-}
-// ฟอร์มยื่นใบลาของบุคลากร (ใช้ id ช่องเดียวกับหน้าบันทึกการลาของ HR เพื่อใช้ readDraft/refreshCalc ร่วมกัน)
-function requestFormHtml(p){
-  const d = S.draft || (S.draft = {staffId:p.id, kind:"sick", start:todayIso(), end:todayIso(), half:"full", emergency:false, note:"", docNo:"", daysOverride:""});
-  const days = workingDays(d.start, d.end, d.half), single = d.start && d.start===d.end;
-  let info = "";
-  if(d.start && d.end){
-    const fy = fyOf(d.start), b = balances(p, fy)[d.kind], after = b.left - pendingDays(p, fy, d.kind) - days;
-    const overlap = allLeaves(p).find(l => !l.cancelled && l.status!=="rejected" && !(d.end < l.start || d.start > l.end));
-    info = `<div class="calc"><span>ลา <b>${fmtN(days)}</b> วันทำการ</span><span>${KINDS[d.kind].label} ปีงบ ${fy}: คงเหลือ <b>${fmtN(b.left)}</b> วัน</span><span>ถ้าอนุมัติทั้งหมด เหลือ <b style="color:${after<0?"var(--danger)":"inherit"}">${fmtN(after)}</b> วัน</span></div>`
-      + (!(days>0)?`<div class="notice warn">ช่วงวันที่เลือกไม่มีวันทำการ (ตรงกับเสาร์-อาทิตย์หรือวันหยุดราชการ)</div>`:"")
-      + (after<0?`<div class="notice warn">จำนวนวันเกินสิทธิ์การลา</div>`:"")
-      + (overlap?`<div class="notice warn">ช่วงวันที่ซ้อนกับใบลาเดิม: ${(KINDS[overlap.kind]||{label:"การลา"}).label} ${thDate(overlap.start)} – ${thDate(overlap.end)}</div>`:"")
-      + (fyOf(d.start)!==fyOf(d.end)?`<div class="notice warn">ช่วงลาคร่อมสองปีงบประมาณ กรุณาแยกยื่นเป็นสองใบ</div>`:"");
-  }
-  return `<form class="panel" id="leaveForm" style="display:flex;flex-direction:column;gap:16px"><h3>ยื่นใบลา</h3>
-    <div class="grid-form">
-      <div class="field wide"><span>ประเภทการลา</span><div class="chips">
-        ${Object.entries(KINDS).map(([k,v])=>`<label class="chip ${k==="sick"?"sick":k==="vacation"?"vac":"per"}"><input type="radio" name="f_kind" value="${k}" ${d.kind===k?"checked":""}>${v.label}</label>`).join("")}
-        ${d.kind==="personal"?`<label class="chip plain"><input type="checkbox" id="f_emerg" ${d.emergency?"checked":""}>ลากิจฉุกเฉิน</label>`:""}
-      </div></div>
-      <label class="field"><span>ตั้งแต่วันที่</span>${dateField("f_start", d.start)}</label>
-      <label class="field"><span>ถึงวันที่</span>${dateField("f_end", d.end)}</label>
-      <label class="field"><span id="f_half_lbl">ช่วงเวลา${single?"":" (ใช้ได้เมื่อลาวันเดียว)"}</span><select id="f_half" ${single?"":"disabled"}>
-        <option value="full" ${d.half==="full"?"selected":""}>เต็มวัน</option><option value="am" ${d.half==="am"?"selected":""}>ครึ่งวันเช้า</option><option value="pm" ${d.half==="pm"?"selected":""}>ครึ่งวันบ่าย</option></select></label>
-      <label class="field wide"><span>เหตุผล / หมายเหตุ</span><input id="f_note" maxlength="500" value="${esc(d.note)}" placeholder="เช่น ไข้หวัด มีใบรับรองแพทย์"></label>
-    </div>
-    <div class="row"><span class="muted" style="font-size:.85rem">ส่งให้ HR พิจารณา · นับเฉพาะวันทำการ</span><span class="spacer"></span>
-      <button type="button" class="ghost" data-act="req-close">ปิด</button><button type="submit" class="primary">ส่งใบลา</button></div>
-    <div id="calcBox" style="display:contents">${info}</div>
-  </form>`;
+  <p class="muted" style="font-size:.85rem">หากข้อมูลไม่ตรงกับใบลา โปรดติดต่อเจ้าหน้าที่ HR</p>`;
 }
 
 function render(){
@@ -1239,7 +1110,7 @@ function render(){
   document.getElementById("roleLine").textContent = S.isHR ? "โหมดเจ้าหน้าที่ HR · บันทึกและดูการลาของบุคลากรทุกคน" : "การลาของฉัน · แสดงเฉพาะข้อมูลของคุณ";
   if(S.isHR){
     $tabs.hidden=false; $tabs.innerHTML = tabsHtml();
-    $app.innerHTML = ({summary:viewSummary, pending:viewPending, calendar:viewCalendar, person:viewPerson, record:viewRecord, staff:viewStaff, cancel:viewCancel, accounts:viewAccounts, settings:viewSettings}[S.view]||viewSummary)();
+    $app.innerHTML = ({summary:viewSummary, calendar:viewCalendar, person:viewPerson, record:viewRecord, staff:viewStaff, cancel:viewCancel, accounts:viewAccounts, settings:viewSettings}[S.view]||viewSummary)();
   } else {
     $tabs.hidden=true; $app.innerHTML = viewMine();
   }
@@ -1282,19 +1153,6 @@ document.addEventListener("click", async ev => {
     S.confirmKey=null; try{ await call("restoreLeave", id); toast("คืนสถานะรายการลาแล้ว"); }catch(e){}
   }
   else if(a==="cancel"){ S.confirmKey=null; render(); }
-  else if(a==="rv"){
-    const tt=t.dataset.t, s=t.dataset.s, l=findLeave(id); if(!l) return;
-    if((tt==="cx"?l.cx:l.status)===s && S.confirmKey!==`rj:${tt}:${id}`) return;
-    if(s==="rejected"){ S.confirmKey=`rj:${tt}:${id}`; render(); document.getElementById("rj_reason")?.focus(); return; }
-    S.confirmKey=null;
-    try{ await call(tt==="cx"?"reviewCancel":"reviewLeave", id, s);
-      toast(tt==="cx" ? (s==="approved"?"อนุมัติการยกเลิกแล้ว วันที่ยกเลิกไม่นับเป็นวันลา":"ตั้งคำขอยกเลิกเป็นรอพิจารณา")
-        : (s==="approved"?"อนุมัติใบลาแล้ว":"ตั้งใบลาเป็นรอพิจารณา")); }catch(e){}
-  }
-  else if(a==="req-open"){ S.reqOpen=true; S.draft=null; render(); }
-  else if(a==="req-close"){ S.reqOpen=false; S.draft=null; render(); }
-  else if(a==="withdraw-leave"){ S.confirmKey=null; try{ await call("withdrawLeave", id); toast("ถอนใบลาแล้ว"); }catch(e){} }
-  else if(a==="withdraw-cancel"){ S.confirmKey=null; try{ await call("withdrawCancel", id); toast("ถอนคำขอยกเลิกแล้ว"); }catch(e){} }
   else if(a==="sp-clear"){ spPick(""); }
   else if(a==="del-leave"){
     S.confirmKey=null; try{ await call("deleteLeave", id); toast("ลบรายการลาแล้ว"); }catch(e){}
@@ -1369,7 +1227,7 @@ function readDraft(){
 function refreshCalc(){
   const box=document.getElementById("calcBox"); if(!box) return;
   if(document.getElementById("f_end")?.value!==S.draft.end) setDateValue("f_end", S.draft.end);
-  const t=document.createElement("template"); t.innerHTML=(S.isHR?viewRecord:viewMine)(); const c=t.content;
+  const t=document.createElement("template"); t.innerHTML=viewRecord(); const c=t.content;
   box.innerHTML=c.getElementById("calcBox")?.innerHTML||"";
   for(const id of ["f_half_lbl","f_days_lbl"]){ const a=document.getElementById(id), b=c.getElementById(id); if(a&&b) a.textContent=b.textContent; }
   const dy=document.getElementById("f_days"), ndy=c.getElementById("f_days"); if(dy&&ndy) dy.placeholder=ndy.placeholder;
@@ -1389,7 +1247,7 @@ document.addEventListener("change", ev => {
   if(id==="f_staff_q") return; // ช่องค้นหาบุคลากร จัดการเองใน spOpen/spPick
   if(id==="cal_kind"){ S.calKind=ev.target.value; render(); return; }
   if(id==="cal_group"){ S.calGroup=ev.target.value; render(); return; }
-  if((S.view==="record" || (!S.isHR && S.reqOpen)) && /^f_/.test(id)){
+  if(S.view==="record" && /^f_/.test(id)){
     readDraft();
     if(["f_start_txt","f_end_txt","f_half","f_kind","f_staff","f_emerg"].includes(id)){ S.draft.daysOverride=""; const fd=document.getElementById("f_days"); if(fd) fd.value=""; }
     // text fields: patch in place, a full re-render here would swallow a click on the save button
@@ -1425,7 +1283,7 @@ document.addEventListener("input", ev => {
   else if(id==="lg_user"){ S.lgUser=ev.target.value; }
   else if(id==="f_staff_q"){ SP.idx=0; spOpen(ev.target.value); }
   else if(id==="h_n"){ S.hn=ev.target.value; }
-  else if((S.view==="record" || (!S.isHR && S.reqOpen)) && (id==="f_note"||id==="f_doc"||id==="f_days")){ readDraft(); if(id==="f_days") refreshCalc(); }
+  else if(S.view==="record" && (id==="f_note"||id==="f_doc"||id==="f_days")){ readDraft(); if(id==="f_days") refreshCalc(); }
 
 });
 
@@ -1439,26 +1297,8 @@ document.addEventListener("submit", async ev => {
     if(r.to<r.from){ toast("วันที่ถึง ต้องไม่ก่อนวันที่ตั้งแต่"); return; }
     if(!r.whole && !(cxlDays(r.l, r.from, r.to)>0)){ toast("ช่วงวันที่เลือกไม่มีวันทำการให้ยกเลิก"); return; }
     S.confirmKey=null;
-    const fn = S.isHR ? "cancelLeave" : "requestCancel"; // บุคลากร = ส่งคำขอให้ HR พิจารณา
-    try{ if(r.whole) await call(fn, f.dataset.id, reason); else await call(fn, f.dataset.id, reason, r.from, r.to);
-      toast(!S.isHR ? "ส่งคำขอยกเลิกแล้ว รอ HR พิจารณา"
-        : r.whole?"ยกเลิกวันลาแล้ว วันที่ยกเลิกไม่นับเป็นวันลา":`ยกเลิก ${thDate(r.from)}${r.from!==r.to?" – "+thDate(r.to):""} แล้ว วันที่เหลือยังนับเป็นวันลา`); }catch(e){}
-    return;
-  }
-  if(f.id==="rjForm"){
-    const reason=(document.getElementById("rj_reason")?.value||"").trim();
-    if(!reason){ toast("กรุณาระบุเหตุผลที่ไม่อนุมัติ"); return; }
-    S.confirmKey=null;
-    try{ await call(f.dataset.t==="cx"?"reviewCancel":"reviewLeave", f.dataset.id, "rejected", reason);
-      toast(f.dataset.t==="cx"?"ไม่อนุมัติการยกเลิกแล้ว วันลายังนับตามเดิม":"ไม่อนุมัติใบลาแล้ว"); }catch(e){}
-    return;
-  }
-  if(f.id==="leaveForm" && !S.isHR){
-    readDraft(); const d=S.draft;
-    if(!d.start||!d.end){ toast("ระบุวันที่ลา"); return; }
-    if(!(workingDays(d.start,d.end,d.half)>0)){ toast("ช่วงวันที่เลือกไม่มีวันทำการ ตรวจสอบวันที่หรือวันหยุด"); return; }
-    try{ await call("requestLeave", {kind:d.kind, start:d.start, end:d.end, half:d.start===d.end?d.half:"full", emergency:!!d.emergency, note:d.note.trim()});
-      toast("ส่งใบลาแล้ว รอ HR พิจารณา"); S.reqOpen=false; S.draft=null; render(); }catch(e){}
+    try{ if(r.whole) await call("cancelLeave", f.dataset.id, reason); else await call("cancelLeave", f.dataset.id, reason, r.from, r.to);
+      toast(r.whole?"ยกเลิกวันลาแล้ว วันที่ยกเลิกไม่นับเป็นวันลา":`ยกเลิก ${thDate(r.from)}${r.from!==r.to?" – "+thDate(r.to):""} แล้ว วันที่เหลือยังนับเป็นวันลา`); }catch(e){}
     return;
   }
   if(f.id==="leaveForm"){
