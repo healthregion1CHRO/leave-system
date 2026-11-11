@@ -51,6 +51,7 @@ function onOpen() {
     .addSeparator()
     .addItem('ตั้งค่าอัปเดตอัตโนมัติจาก GitHub', 'menuSetupAutoUpdate')
     .addItem('อัปเดตจาก GitHub ตอนนี้', 'menuUpdateNow')
+    .addItem('ตรวจสถานะอัปเดตอัตโนมัติ', 'menuUpdateStatus')
     .addToUi();
 }
 
@@ -91,6 +92,38 @@ function menuUpdateNow() {
 
 // เรียกจากตัวตั้งเวลา (time-driven trigger)
 function autoUpdateTick() { autoUpdate_(false); }
+
+// สถานะตัวอัปเดต (อ่านอย่างเดียว ไม่มี token/ข้อมูลบุคลากร) — เรียกจากภายนอกได้ เพื่อตรวจว่าทำไมไม่อัปเดต
+function updateStatus() {
+  var p = PropertiesService.getScriptProperties();
+  var last = null; try { last = JSON.parse(p.getProperty('GH_LAST') || 'null'); } catch (e) {}
+  var trig = false; try { trig = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'autoUpdateTick'; }); } catch (e) {}
+  return {
+    code: 'approval+status', // ป้ายบอกรุ่นโค้ด: เปลี่ยนเมื่ออยากรู้ว่าโค้ดใหม่ขึ้นแล้วหรือยัง
+    trigger: trig,
+    sha: String(p.getProperty('GH_SHA') || '').slice(0, 11),
+    last: last,
+    pending: !!p.getProperty('GH_PENDING'),
+    error: String(p.getProperty('GH_ERROR') || '').slice(0, 400),
+    token: !!p.getProperty('GH_TOKEN')
+  };
+}
+
+// เมนู: ตรวจทีละข้อว่าตัวอัปเดตอัตโนมัติพร้อมหรือยัง พร้อมบอกวิธีแก้
+function menuUpdateStatus() {
+  var ui = SpreadsheetApp.getUi();
+  var s = updateStatus(), lines = [];
+  lines.push((s.trigger ? '✔' : '✘') + ' ตัวตั้งเวลาทุก 10 นาที' + (s.trigger ? '' : ' — ยังไม่มี: กดเมนู "ตั้งค่าอัปเดตอัตโนมัติจาก GitHub"'));
+  var api = '';
+  try { scriptApi_('get', ScriptApp.getScriptId() + '/deployments'); } catch (e) { api = String(e.message || e); }
+  lines.push((api ? '✘' : '✔') + ' Google Apps Script API / สิทธิ์ script.projects' +
+    (api ? ' — ' + api + '\n   วิธีแก้: เปิด https://script.google.com/home/usersettings → Google Apps Script API = เปิด และวาง appsscript.json จาก GitHub (การตั้งค่าโปรเจกต์ → แสดงไฟล์ Manifest)' : ''));
+  var gh = ghFetch_('https://api.github.com/repos/' + GH_REPO + '/commits/' + GH_BRANCH, PropertiesService.getScriptProperties().getProperty('GH_TOKEN') || '', 'application/vnd.github.sha');
+  lines.push((gh.code === 200 || gh.code === 403 ? '✔' : '✘') + ' อ่าน GitHub ' + GH_REPO + ' (HTTP ' + gh.code + ')' + (gh.code === 200 ? ' ล่าสุด ' + gh.text.trim().slice(0, 7) : ''));
+  lines.push('อัปเดตล่าสุด: ' + (s.last ? s.last.at + ' (' + String(s.last.sha).slice(0, 7) + ', เวอร์ชัน ' + s.last.version + ', ' + s.last.deployments + ' ลิงก์)' : 'ยังไม่เคย'));
+  if (s.error) lines.push('ข้อผิดพลาดล่าสุด: ' + s.error);
+  ui.alert('สถานะอัปเดตอัตโนมัติจาก GitHub', lines.join('\n\n'), ui.ButtonSet.OK);
+}
 
 function updateMessage_(r) {
   if (r.error) return 'อัปเดตไม่สำเร็จ: ' + r.error;
@@ -1025,7 +1058,7 @@ function apiFn_(name) {
     addLeave: addLeave, deleteLeave: deleteLeave, cancelLeave: cancelLeave, restoreLeave: restoreLeave, saveCarry: saveCarry, saveTypes: saveTypes,
     requestLeave: requestLeave, withdrawLeave: withdrawLeave, reviewLeave: reviewLeave,
     requestCancel: requestCancel, withdrawCancel: withdrawCancel, reviewCancel: reviewCancel,
-    addHoliday: addHoliday, deleteHoliday: deleteHoliday, exportSheet: exportSheet
+    addHoliday: addHoliday, deleteHoliday: deleteHoliday, exportSheet: exportSheet, updateStatus: updateStatus
   };
   return Object.prototype.hasOwnProperty.call(api, name) ? api[name] : null;
 }

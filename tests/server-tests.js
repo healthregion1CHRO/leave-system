@@ -374,7 +374,11 @@ window.runServerTests = function () {
     r = U.autoUpdate_(true);
     ok('rate-limited: manual update applies at once', r.updated && ver === 7, r);
     ghCode = 200;
-    ok('updater not exposed to web API', !U.apiFn_('autoUpdate_') && !U.apiFn_('menuUpdateNow') && !U.apiFn_('autoUpdateTick'));
+    ok('updater not exposed to web API', !U.apiFn_('autoUpdate_') && !U.apiFn_('menuUpdateNow') && !U.apiFn_('autoUpdateTick') && !U.apiFn_('menuUpdateStatus'));
+    u.props.set('GH_TOKEN', 'SECRET'); u.props.set('GH_ERROR', '2026 boom');
+    const st = U.apiFn_('updateStatus')();
+    ok('updateStatus via API: status without token', st.trigger === false && st.token === true && st.error === '2026 boom' && st.last && st.last.version === ver && JSON.stringify(st).indexOf('SECRET') < 0, st);
+    u.props.delete('GH_TOKEN'); u.props.delete('GH_ERROR');
     // google.script.run จากหน้าเว็บเรียกฟังก์ชันเมนูได้ แต่ไม่มี UI → ต้องหยุดก่อนทำอะไร
     const getUi = u.env.SpreadsheetApp.getUi;
     u.env.SpreadsheetApp.getUi = () => { throw new Error('Cannot call SpreadsheetApp.getUi() from this context.'); };
