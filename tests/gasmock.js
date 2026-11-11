@@ -30,7 +30,7 @@
     const sheets = []; // {name, rows: [[...]], fmt:{}}
     const isEmptyRow = r => r.every(v => v === '' || v == null);
     function Sheet(name) {
-      const s = { name, rows: [], notes: {}, maxRows: 1000 };
+      const s = { name, rows: [], notes: {}, maxRows: 1000, maxCols: 26 }; // ชีตใหม่ของ Google มี 26 คอลัมน์ (A–Z)
       const width = () => Math.max(0, ...s.rows.map(r => r.length));
       const lastRow = () => { for (let i = s.rows.length - 1; i >= 0; i--) if (!isEmptyRow(s.rows[i])) return i + 1; return 0; };
       const cell = (r, c) => (s.rows[r - 1] || [])[c - 1];
@@ -51,7 +51,11 @@
         getName: () => name,
         getLastRow: lastRow, getMaxRows: () => Math.max(s.maxRows, s.rows.length),
         insertRowAfter: () => { s.maxRows++; },
-        getRange: (a, b, c, d) => { if (typeof a === 'string') { const [r, cc] = A1(a); return (api_r = Range(r, cc, 1, 1)); } return (api_r = Range(a, b, c || 1, d || 1)); },
+        getMaxColumns: () => Math.max(s.maxCols, width()),
+        insertColumnsAfter: (_, n) => { s.maxCols += n; return api; },
+        getRange: (a, b, c, d) => { if (typeof a === 'string') { const [r, cc] = A1(a); return (api_r = Range(r, cc, 1, 1)); }
+          if (b + (d || 1) - 1 > Math.max(s.maxCols, width())) throw new Error('Range is out of bounds: column ' + (b + (d || 1) - 1));
+          return (api_r = Range(a, b, c || 1, d || 1)); },
         getDataRange: () => { const lr = lastRow(); return (api_r = Range(1, 1, Math.max(lr, 1), Math.max(width(), 1))); },
         appendRow: row => { const r = lastRow() + 1; row.forEach((v, j) => set(r, j + 1, v)); return api; },
         deleteRow: r => { s.rows.splice(r - 1, 1); },

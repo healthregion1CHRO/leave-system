@@ -16,8 +16,14 @@ var STAFF_HEAD = ['id', 'ชื่อ-สกุล', 'ตำแหน่ง', '�
   'เลขบัตรประชาชน (กรอกชั่วคราว)', 'salt', 'hash', 'ควรเปลี่ยนรหัสผ่าน', 'เข้าใช้ล่าสุด'];
 var LEAVE_HEAD = ['id', 'staffId', 'ชื่อ-สกุล', 'ประเภทการลา', 'ฉุกเฉิน', 'ตั้งแต่', 'ถึง', 'ช่วงเวลา',
   'วันทำการ', 'ปีงบประมาณ', 'หมายเหตุ', 'เลขที่ใบลา', 'บันทึกโดย', 'เวลาบันทึก',
-  'สถานะ', 'เหตุผลการยกเลิก', 'ยกเลิกโดย', 'เวลายกเลิก']; // คอลัมน์ 15–18: ขอยกเลิกวันลา (ว่าง = ปกติ)
-var CANCELLED = 'ยกเลิก';
+  'สถานะ', 'เหตุผลการยกเลิก', 'ยกเลิกโดย', 'เวลายกเลิก', // คอลัมน์ 15–18: การยกเลิกวันลา (ว่าง = ปกติ)
+  'การพิจารณา', 'พิจารณาโดย', 'เวลาพิจารณา', 'เหตุผลไม่อนุมัติ', // คอลัมน์ 19–22: พิจารณาใบลา (ว่าง = อนุมัติ สำหรับรายการเดิม)
+  'พิจารณาการยกเลิกโดย', 'เวลาพิจารณาการยกเลิก', 'เหตุผลไม่อนุมัติการยกเลิก', 'ขอยกเลิกตั้งแต่', 'ขอยกเลิกถึง']; // คอลัมน์ 23–27
+// คอลัมน์ สถานะ (15): ยกเลิก = ยกเลิกแล้ว ไม่นับเป็นวันลา · ขอยกเลิก = รอพิจารณา · ไม่อนุมัติการยกเลิก = ยังนับเป็นวันลา
+var CANCELLED = 'ยกเลิก', CX_PENDING = 'ขอยกเลิก', CX_REJECTED = 'ไม่อนุมัติการยกเลิก';
+// คอลัมน์ การพิจารณา (19)
+var ST_PENDING = 'รอพิจารณา', ST_APPROVED = 'อนุมัติ', ST_REJECTED = 'ไม่อนุมัติ';
+var LEAVE_COLS = 27;
 var CARRY_HEAD = ['staffId', 'ชื่อ-สกุล', 'ปีงบประมาณ', 'ลาป่วยยกมา', 'ลากิจยกมา', 'ลาพักผ่อนยกมา'];
 var TYPES_HEAD = ['รหัส', 'ประเภทบุคลากร', 'ลาป่วย/ปี', 'ลากิจ/ปี', 'ลาพักผ่อน/ปี', 'ลาพักผ่อนสะสมรวมไม่เกิน'];
 var HOL_HEAD = ['วันที่ (ปปปป-ดด-วว ค.ศ.)', 'ชื่อวันหยุด'];
@@ -185,7 +191,7 @@ function setupSystem() {
   var ui = SpreadsheetApp.getUi();
   var ss = SpreadsheetApp.getActive();
   ensureSheet_(ss, SH.STAFF, STAFF_HEAD, [6, 7, 9]);
-  ensureHead_(ensureSheet_(ss, SH.LEAVES, LEAVE_HEAD, [6, 7, 11, 12, 16]), LEAVE_HEAD);
+  ensureHead_(ensureSheet_(ss, SH.LEAVES, LEAVE_HEAD, [6, 7, 11, 12, 16, 22, 25, 26, 27]), LEAVE_HEAD);
   ensureSheet_(ss, SH.CARRY, CARRY_HEAD, []);
   var t = ensureSheet_(ss, SH.TYPES, TYPES_HEAD, []);
   if (t.getLastRow() < 2) t.getRange(2, 1, DEFAULT_TYPES.length, 6).setValues(DEFAULT_TYPES);
@@ -450,13 +456,85 @@ function addLeave(token, l) {
   if (!(days > 0) || days > 366) throw new Error('จำนวนวันทำการไม่ถูกต้อง');
   withLock_(function () {
     var r = findStaff_(l.staffId);
-    var me = findStaff_(s.id);
-    var sh = sheet_(SH.LEAVES), row = sh.getLastRow() + 1;
-    if (row > sh.getMaxRows()) sh.insertRowAfter(sh.getMaxRows());
-    // วันที่ เลขที่ใบลา และหมายเหตุ เก็บเป็นข้อความ (กัน 12/2569 กลายเป็นวันที่ หรือ = กลายเป็นสูตร)
-    ['F', 'G', 'K', 'L'].forEach(function (c) { sh.getRange(c + row).setNumberFormat('@'); });
-    sh.getRange(row, 1, 1, 14).setValues([[Utilities.getUuid(), r.id, r.name, l.kind, !!l.emergency, l.start, l.end,
-      l.start === l.end ? (l.half || 'full') : 'full', days, fyOf_(l.start), String(l.note || ''), String(l.docNo || ''), me.name, new Date()]]);
+    var me = findStaff_(s.id), now = new Date();
+    // HR บันทึกเอง = อนุมัติทันที
+    appendLeave_(sheet_(SH.LEAVES), [Utilities.getUuid(), r.id, r.name, l.kind, !!l.emergency, l.start, l.end,
+      l.start === l.end ? (l.half || 'full') : 'full', days, fyOf_(l.start), String(l.note || ''), String(l.docNo || ''), me.name, now],
+      [ST_APPROVED, me.name, now, '']);
+  });
+  return { data: buildData_(s) };
+}
+
+// แถวใหม่ในชีตการลา: คอลัมน์ 1–14 + ผลการพิจารณา (คอลัมน์ 19–22)
+function appendLeave_(sh, vals, review) {
+  ensureHead_(sh, LEAVE_HEAD);
+  var row = sh.getLastRow() + 1;
+  if (row > sh.getMaxRows()) sh.insertRowAfter(sh.getMaxRows());
+  // วันที่ เลขที่ใบลา หมายเหตุ และเหตุผล เก็บเป็นข้อความ (กัน 12/2569 กลายเป็นวันที่ หรือ = กลายเป็นสูตร)
+  ['F', 'G', 'K', 'L', 'V'].forEach(function (c) { sh.getRange(c + row).setNumberFormat('@'); });
+  sh.getRange(row, 1, 1, 14).setValues([vals]);
+  sh.getRange(row, 19, 1, 4).setValues([review]);
+  return row;
+}
+
+// บุคลากรยื่นใบลาของตัวเอง → รอพิจารณา (จำนวนวันคำนวณที่เซิร์ฟเวอร์จากวันทำการ)
+function requestLeave(token, l) {
+  var u = requireUser_(token);
+  l = l || {};
+  if (!KIND_CODES[l.kind]) throw new Error('ประเภทการลาไม่ถูกต้อง');
+  if (!isIso_(l.start) || !isIso_(l.end) || l.end < l.start) throw new Error('วันที่ลาไม่ถูกต้อง');
+  if (fyOf_(l.start) !== fyOf_(l.end)) throw new Error('ช่วงลาคร่อมสองปีงบประมาณ กรุณาแยกยื่นเป็นสองใบ');
+  var half = l.start === l.end && (l.half === 'am' || l.half === 'pm') ? l.half : 'full';
+  var days = workDays_(l.start, l.end, holidayMap_());
+  if (half !== 'full') days = days ? 0.5 : 0;
+  if (!(days > 0)) throw new Error('ช่วงวันที่เลือกไม่มีวันทำการ (ตรงกับเสาร์-อาทิตย์หรือวันหยุดราชการ)');
+  if (days > 366) throw new Error('จำนวนวันลาไม่ถูกต้อง');
+  withLock_(function () {
+    var me = findStaff_(u.s.id), now = new Date();
+    rowsOf_(SH.LEAVES).forEach(function (x) {
+      if (String(x[1]) !== me.id || isCancelled_(x[14]) || statusOf_(x[18]) === 'rejected') return;
+      var a = isoCell_(x[5]), b = isoCell_(x[6]);
+      if (a && b && !(l.end < a || l.start > b)) throw new Error('ช่วงวันที่ซ้อนกับใบลาเดิม (' + a + (a !== b ? ' ถึง ' + b : '') + ')');
+    });
+    appendLeave_(sheet_(SH.LEAVES), [Utilities.getUuid(), me.id, me.name, l.kind, l.kind === 'personal' && !!l.emergency, l.start, l.end,
+      half, days, fyOf_(l.start), String(l.note || '').slice(0, 500), String(l.docNo || '').slice(0, 100), me.name, now],
+      [ST_PENDING, '', '', '']);
+  });
+  return { data: buildData_(u.s) };
+}
+
+// ถอนใบลาที่ยังรอพิจารณา (เจ้าของใบลา หรือ HR) → ลบแถวออก
+function withdrawLeave(token, leaveId) {
+  var u = requireUser_(token);
+  withLock_(function () {
+    var sh = sheet_(SH.LEAVES), x = leaveCtx_(sh, leaveId);
+    if (!u.isHR && String(x.cur[1]) !== u.me.id) throw new Error('ถอนได้เฉพาะใบลาของตัวเอง');
+    if (statusOf_(x.cur[18]) !== 'pending') throw new Error('ถอนได้เฉพาะใบลาที่ยังรอพิจารณา');
+    sh.deleteRow(x.row);
+  });
+  return { data: buildData_(u.s) };
+}
+
+var REVIEW = { pending: ST_PENDING, approved: ST_APPROVED, rejected: ST_REJECTED };
+
+// HR พิจารณาใบลา: pending / approved / rejected (ไม่อนุมัติต้องมีเหตุผล)
+function reviewLeave(token, leaveId, status, reason) {
+  var s = requireHR_(token);
+  if (!REVIEW[status]) throw new Error('สถานะการพิจารณาไม่ถูกต้อง');
+  reason = String(reason || '').trim();
+  if (status === 'rejected' && !reason) throw new Error('กรุณาระบุเหตุผลที่ไม่อนุมัติ');
+  withLock_(function () {
+    var me = findStaff_(s.id), sh = sheet_(SH.LEAVES), x = leaveCtx_(sh, leaveId);
+    var cx = cxOf_(x.cur[14]);
+    if (status !== 'approved' && (cx === 'pending' || cx === 'approved'))
+      throw new Error('รายการนี้มีการยกเลิกวันลาอยู่ กรุณาพิจารณาที่หน้า ยกเลิกวันลา ก่อน');
+    if (status !== 'approved' && cx === 'rejected') { // ใบลาไม่ได้อนุมัติแล้ว คำขอยกเลิกเดิมไม่มีความหมาย
+      sh.getRange(x.row, 15, 1, 4).setValues([['', '', '', '']]);
+      sh.getRange(x.row, 23, 1, 5).setValues([['', '', '', '', '']]);
+    }
+    sh.getRange(x.row, 22).setNumberFormat('@');
+    sh.getRange(x.row, 19, 1, 4).setValues([status === 'pending' ? [ST_PENDING, '', '', '']
+      : [REVIEW[status], me.name, new Date(), status === 'rejected' ? reason.slice(0, 500) : '']]);
   });
   return { data: buildData_(s) };
 }
@@ -470,46 +548,114 @@ function deleteLeave(token, leaveId) {
 // ขอยกเลิกวันลา: รายการยังอยู่ในประวัติ แต่ไม่นับเป็นวันลาที่ใช้ไป
 // from/to (ไม่บังคับ) = ยกเลิกเฉพาะบางวัน: แยกรายการเดิมเป็น ช่วงก่อน / ช่วงที่ยกเลิก / ช่วงหลัง
 // ช่วงที่ไม่ได้ยกเลิกยังนับเป็นวันลาตามวันทำการ (ตัดเสาร์-อาทิตย์และวันหยุดราชการ)
+// HR ยกเลิกเอง = อนุมัติการยกเลิกทันที (ใช้แทนคำขอที่ค้างอยู่ได้)
 function cancelLeave(token, leaveId, reason, from, to) {
   var s = requireHR_(token);
   reason = String(reason || '').trim();
   if (!reason) throw new Error('กรุณาระบุเหตุผลการยกเลิก');
   withLock_(function () {
-    var me = findStaff_(s.id);
-    var sh = sheet_(SH.LEAVES), row = leaveRow_(sh, leaveId);
-    ensureHead_(sh, LEAVE_HEAD);
-    var cur = sh.getRange(row, 1, 1, 18).getValues()[0];
-    if (isCancelled_(cur[14])) throw new Error('รายการนี้ยกเลิกไปแล้ว');
-    var start = isoCell_(cur[5]), end = isoCell_(cur[6]);
-    from = from ? String(from) : start; to = to ? String(to) : end;
-    if (!isIso_(from) || !isIso_(to) || to < from) throw new Error('วันที่ยกเลิกไม่ถูกต้อง');
-    if (from < start || to > end) throw new Error('วันที่ยกเลิกต้องอยู่ในช่วงวันลา ' + start + ' ถึง ' + end);
-    var cancelVals = [CANCELLED, reason.slice(0, 500), me.name, new Date()];
-    sh.getRange(row, 16).setNumberFormat('@'); // เหตุผลเก็บเป็นข้อความ (กัน = กลายเป็นสูตร)
-    if (from === start && to === end) { sh.getRange(row, 15, 1, 4).setValues([cancelVals]); return; }
-
-    var hol = {};
-    rowsOf_(SH.HOLIDAYS).forEach(function (x) { var d = isoCell_(x[0]); if (d) hol[d] = 1; });
-    var before = from > start ? { a: start, b: addDays_(from, -1) } : null;
-    var after = to < end ? { a: addDays_(to, 1), b: end } : null;
-    [before, after].forEach(function (p) { if (p) p.days = workDays_(p.a, p.b, hol); });
-    var keep = [before, after].filter(function (p) { return p && p.days > 0; });
-    var total = Number(cur[8]) || 0;
-    var cancelDays = Math.round((total - keep.reduce(function (n, p) { return n + p.days; }, 0)) * 2) / 2;
-    if (!(cancelDays > 0)) throw new Error('ช่วงวันที่เลือกไม่มีวันทำการให้ยกเลิก');
-    // แถวเดิม = ช่วงที่ยกเลิก
-    sh.getRange(row, 6, 1, 5).setValues([[from, to, 'full', cancelDays, fyOf_(from)]]);
-    sh.getRange(row, 15, 1, 4).setValues([cancelVals]);
-    // ช่วงที่ยังลาอยู่ = รายการใหม่ (คัดลอกประเภท หมายเหตุ เลขที่ใบลา ผู้บันทึกเดิม)
-    keep.forEach(function (p) {
-      var r = sh.getLastRow() + 1;
-      if (r > sh.getMaxRows()) sh.insertRowAfter(sh.getMaxRows());
-      ['F', 'G', 'K', 'L'].forEach(function (c) { sh.getRange(c + r).setNumberFormat('@'); });
-      sh.getRange(r, 1, 1, 14).setValues([[Utilities.getUuid(), cur[1], cur[2], cur[3], cur[4], p.a, p.b, 'full', p.days,
-        fyOf_(p.a), cur[10], cur[11], cur[12], cur[13]]]);
-    });
+    var me = findStaff_(s.id), sh = sheet_(SH.LEAVES), x = leaveCtx_(sh, leaveId);
+    if (isCancelled_(x.cur[14])) throw new Error('รายการนี้ยกเลิกไปแล้ว');
+    if (statusOf_(x.cur[18]) !== 'approved') throw new Error('ยกเลิกได้เฉพาะวันลาที่อนุมัติแล้ว (ใบลาที่ยังไม่อนุมัติ ให้เปลี่ยนการพิจารณาแทน)');
+    var p = cancelPlan_(x.cur, from, to, holidayMap_()), now = new Date();
+    applyCancel_(sh, x.row, x.cur, p, [CANCELLED, reason.slice(0, 500), me.name, now], [me.name, now, '']);
   });
   return { data: buildData_(s) };
+}
+
+// บุคลากรขอยกเลิกวันลาของตัวเองที่อนุมัติแล้ว (ทั้งรายการ หรือบางช่วง) → รอ HR พิจารณา
+function requestCancel(token, leaveId, reason, from, to) {
+  var u = requireUser_(token);
+  reason = String(reason || '').trim();
+  if (!reason) throw new Error('กรุณาระบุเหตุผลการยกเลิก');
+  withLock_(function () {
+    var sh = sheet_(SH.LEAVES), x = leaveCtx_(sh, leaveId);
+    if (String(x.cur[1]) !== u.me.id) throw new Error('ขอยกเลิกได้เฉพาะวันลาของตัวเอง');
+    if (statusOf_(x.cur[18]) !== 'approved') throw new Error('ขอยกเลิกได้เฉพาะวันลาที่อนุมัติแล้ว (ใบลาที่รอพิจารณา ให้กด ถอนใบลา)');
+    var cx = cxOf_(x.cur[14]);
+    if (cx === 'approved') throw new Error('รายการนี้ยกเลิกไปแล้ว');
+    if (cx === 'pending') throw new Error('ส่งคำขอยกเลิกรายการนี้แล้ว รอ HR พิจารณา');
+    var p = cancelPlan_(x.cur, from, to, holidayMap_()); // ตรวจช่วงวันที่ตั้งแต่ตอนขอ
+    ['P', 'Y', 'Z', 'AA'].forEach(function (c) { sh.getRange(c + x.row).setNumberFormat('@'); });
+    sh.getRange(x.row, 15, 1, 4).setValues([[CX_PENDING, reason.slice(0, 500), u.me.name, new Date()]]);
+    sh.getRange(x.row, 23, 1, 5).setValues([['', '', '', p.whole ? '' : p.from, p.whole ? '' : p.to]]);
+  });
+  return { data: buildData_(u.s) };
+}
+
+// ถอนคำขอยกเลิกที่ยังรอพิจารณา (เจ้าของ หรือ HR)
+function withdrawCancel(token, leaveId) {
+  var u = requireUser_(token);
+  withLock_(function () {
+    var sh = sheet_(SH.LEAVES), x = leaveCtx_(sh, leaveId);
+    if (!u.isHR && String(x.cur[1]) !== u.me.id) throw new Error('ถอนได้เฉพาะคำขอของตัวเอง');
+    if (cxOf_(x.cur[14]) !== 'pending') throw new Error('ไม่มีคำขอยกเลิกที่รอพิจารณา');
+    sh.getRange(x.row, 15, 1, 4).setValues([['', '', '', '']]);
+    sh.getRange(x.row, 23, 1, 5).setValues([['', '', '', '', '']]);
+  });
+  return { data: buildData_(u.s) };
+}
+
+// HR พิจารณาคำขอยกเลิก: approved = ยกเลิกตามช่วงที่ขอ (ไม่นับเป็นวันลา) · rejected = ยังนับเป็นวันลา · pending = กลับไปรอพิจารณา
+function reviewCancel(token, leaveId, status, reason) {
+  var s = requireHR_(token);
+  if (!REVIEW[status]) throw new Error('สถานะการพิจารณาไม่ถูกต้อง');
+  reason = String(reason || '').trim();
+  if (status === 'rejected' && !reason) throw new Error('กรุณาระบุเหตุผลที่ไม่อนุมัติ');
+  withLock_(function () {
+    var me = findStaff_(s.id), sh = sheet_(SH.LEAVES), x = leaveCtx_(sh, leaveId), cur = x.cur;
+    var cx = cxOf_(cur[14]), now = new Date();
+    if (!cx) throw new Error('รายการนี้ไม่มีคำขอยกเลิก');
+    if (status === 'approved') {
+      if (cx === 'approved') return;
+      var p = cancelPlan_(cur, isoCell_(cur[25]), isoCell_(cur[26]), holidayMap_());
+      applyCancel_(sh, x.row, cur, p, [CANCELLED, cur[15], cur[16], cur[17]], [me.name, now, '']);
+      return;
+    }
+    sh.getRange(x.row, 15).setValue(status === 'pending' ? CX_PENDING : CX_REJECTED);
+    sh.getRange(x.row, 25).setNumberFormat('@');
+    sh.getRange(x.row, 23, 1, 3).setValues([status === 'pending' ? ['', '', ''] : [me.name, now, reason.slice(0, 500)]]);
+  });
+  return { data: buildData_(s) };
+}
+
+// ตรวจช่วงวันที่ยกเลิก from–to (ว่าง = ทั้งรายการ) แล้วคืนแผน: ทั้งรายการ หรือแยกเป็น ช่วงก่อน / ช่วงที่ยกเลิก / ช่วงหลัง
+// ช่วงที่ไม่ได้ยกเลิกยังนับเป็นวันลาตามวันทำการ (ตัดเสาร์-อาทิตย์และวันหยุดราชการ)
+function cancelPlan_(cur, from, to, hol) {
+  var start = isoCell_(cur[5]), end = isoCell_(cur[6]);
+  from = from ? String(from) : start; to = to ? String(to) : end;
+  if (!isIso_(from) || !isIso_(to) || to < from) throw new Error('วันที่ยกเลิกไม่ถูกต้อง');
+  if (from < start || to > end) throw new Error('วันที่ยกเลิกต้องอยู่ในช่วงวันลา ' + start + ' ถึง ' + end);
+  if (from === start && to === end) return { whole: true, from: start, to: end };
+  var before = from > start ? { a: start, b: addDays_(from, -1) } : null;
+  var after = to < end ? { a: addDays_(to, 1), b: end } : null;
+  [before, after].forEach(function (p) { if (p) p.days = workDays_(p.a, p.b, hol); });
+  var keep = [before, after].filter(function (p) { return p && p.days > 0; });
+  var total = Number(cur[8]) || 0;
+  var cancelDays = Math.round((total - keep.reduce(function (n, p) { return n + p.days; }, 0)) * 2) / 2;
+  if (!(cancelDays > 0)) throw new Error('ช่วงวันที่เลือกไม่มีวันทำการให้ยกเลิก');
+  return { whole: false, from: from, to: to, keep: keep, cancelDays: cancelDays };
+}
+
+// เขียนผลการยกเลิก: cxVals = คอลัมน์ 15–18, review = คอลัมน์ 23–25
+function applyCancel_(sh, row, cur, p, cxVals, review) {
+  ['P', 'Y'].forEach(function (c) { sh.getRange(c + row).setNumberFormat('@'); }); // เหตุผลเก็บเป็นข้อความ (กัน = กลายเป็นสูตร)
+  if (!p.whole) {
+    // แถวเดิม = ช่วงที่ยกเลิก
+    sh.getRange(row, 6, 1, 5).setValues([[p.from, p.to, 'full', p.cancelDays, fyOf_(p.from)]]);
+    // ช่วงที่ยังลาอยู่ = รายการใหม่ (คัดลอกประเภท หมายเหตุ เลขที่ใบลา ผู้บันทึก และผลพิจารณาใบลาเดิม)
+    p.keep.forEach(function (k) {
+      appendLeave_(sh, [Utilities.getUuid(), cur[1], cur[2], cur[3], cur[4], k.a, k.b, 'full', k.days,
+        fyOf_(k.a), cur[10], cur[11], cur[12], cur[13]], [cur[18], cur[19], cur[20], cur[21]]);
+    });
+  }
+  sh.getRange(row, 15, 1, 4).setValues([cxVals]);
+  sh.getRange(row, 23, 1, 5).setValues([review.concat(['', ''])]);
+}
+function holidayMap_() {
+  var hol = {};
+  rowsOf_(SH.HOLIDAYS).forEach(function (x) { var d = isoCell_(x[0]); if (d) hol[d] = 1; });
+  return hol;
 }
 function addDays_(iso, n) {
   var d = new Date(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10) + n));
@@ -528,9 +674,10 @@ function workDays_(a, b, hol) {
 function restoreLeave(token, leaveId) {
   var s = requireHR_(token);
   withLock_(function () {
-    var sh = sheet_(SH.LEAVES), row = leaveRow_(sh, leaveId);
-    if (!isCancelled_(sh.getRange(row, 15).getValue())) throw new Error('รายการนี้ไม่ได้ถูกยกเลิก');
-    sh.getRange(row, 15, 1, 4).setValues([['', '', '', '']]);
+    var sh = sheet_(SH.LEAVES), x = leaveCtx_(sh, leaveId);
+    if (!isCancelled_(x.cur[14])) throw new Error('รายการนี้ไม่ได้ถูกยกเลิก');
+    sh.getRange(x.row, 15, 1, 4).setValues([['', '', '', '']]);
+    sh.getRange(x.row, 23, 1, 5).setValues([['', '', '', '', '']]);
   });
   return { data: buildData_(s) };
 }
@@ -615,8 +762,12 @@ function buildData_(s) {
     return { id: String(x[0]), staffId: String(x[1]), kind: KIND_ALIASES[k] || k, emergency: x[4] === true || String(x[4]).toUpperCase() === 'TRUE',
       start: isoCell_(x[5]), end: isoCell_(x[6]), half: String(x[7] || 'full'), days: Number(x[8]) || 0, fy: Number(x[9]) || fyOf_(isoCell_(x[5])),
       note: String(x[10] || ''), docNo: String(x[11] || ''), recordedBy: String(x[12] || ''),
-      cancelled: isCancelled_(x[14]), cancelReason: String(x[15] || ''), cancelledBy: String(x[16] || ''),
-      cancelledAt: x[17] instanceof Date ? Utilities.formatDate(x[17], tz_(), 'yyyy-MM-dd') : isoCell_(x[17]) };
+      cancelled: isCancelled_(x[14]), cancelReason: String(x[15] || ''), cancelledBy: String(x[16] || ''), cancelledAt: dayOf_(x[17]),
+      // การพิจารณาใบลา (ว่าง = อนุมัติ: รายการที่บันทึกก่อนมีระบบพิจารณา)
+      status: statusOf_(x[18]), reviewedBy: String(x[19] || ''), reviewedAt: dayOf_(x[20]), rejectReason: String(x[21] || ''),
+      // คำขอยกเลิก: '' / pending / approved (= cancelled) / rejected — cxBy/cxAt = ผู้ขอ, cxReviewedBy = ผู้พิจารณา
+      cx: cxOf_(x[14]), cxReviewedBy: String(x[22] || ''), cxReviewedAt: dayOf_(x[23]), cxRejectReason: String(x[24] || ''),
+      cxFrom: isoCell_(x[25]), cxTo: isoCell_(x[26]) };
   });
   var carry = rowsOf_(SH.CARRY).map(function (x) {
     return { staffId: String(x[0]), fy: Number(x[2]), sick: x[3] === '' ? null : Number(x[3]), personal: x[4] === '' ? null : Number(x[4]), vacation: x[5] === '' ? null : Number(x[5]) };
@@ -642,6 +793,12 @@ function session_(token) {
   if (!raw) throw new Error('SESSION: หมดเวลาการใช้งาน กรุณาเข้าสู่ระบบใหม่');
   CacheService.getScriptCache().put('s_' + token, raw, SESSION_SECONDS);
   return JSON.parse(raw);
+}
+function requireUser_(token) {
+  var s = session_(token);
+  var me = findStaff_(s.id);
+  if (me.salt !== s.v) throw new Error('SESSION: รหัสผ่านถูกเปลี่ยน กรุณาเข้าสู่ระบบใหม่');
+  return { s: s, me: me, isHR: me.role === 'HR' };
 }
 function requireHR_(token) {
   var s = session_(token);
@@ -741,8 +898,20 @@ function leaveRow_(sh, leaveId) {
   throw new Error('ไม่พบรายการลา (อาจถูกลบไปแล้ว) กรุณาโหลดหน้าใหม่');
 }
 function isCancelled_(v) { return String(v == null ? '' : v).trim() === CANCELLED; }
+function statusOf_(v) { var t = String(v == null ? '' : v).trim(); return t === ST_PENDING ? 'pending' : t === ST_REJECTED ? 'rejected' : 'approved'; }
+function cxOf_(v) { var t = String(v == null ? '' : v).trim(); return t === CANCELLED ? 'approved' : t === CX_PENDING ? 'pending' : t === CX_REJECTED ? 'rejected' : ''; }
+function dayOf_(v) { return v instanceof Date ? Utilities.formatDate(v, tz_(), 'yyyy-MM-dd') : isoCell_(v); }
+// แถวรายการลา + ค่าทุกคอลัมน์ (เติมหัวคอลัมน์/ขยายชีตก่อน เพื่อเขียนคอลัมน์ใหม่ได้)
+function leaveCtx_(sh, leaveId) {
+  ensureHead_(sh, LEAVE_HEAD);
+  var row = leaveRow_(sh, leaveId);
+  return { row: row, cur: sh.getRange(row, 1, 1, LEAVE_COLS).getValues()[0] };
+}
 // เติมหัวคอลัมน์ที่ยังไม่มี (ชีตที่สร้างก่อนเพิ่มคอลัมน์ใหม่) โดยไม่แตะข้อมูลเดิม
 function ensureHead_(sh, head) {
+  var max = sh.getMaxColumns();
+  if (max < head.length) sh.insertColumnsAfter(max, head.length - max); // ชีตใหม่มีแค่ A–Z
+
   var cur = sh.getRange(1, 1, 1, head.length).getValues()[0];
   for (var c = 0; c < head.length; c++) if (String(cur[c] || '').trim() === '') sh.getRange(1, c + 1).setValue(head[c]);
   return sh;
@@ -754,6 +923,7 @@ function renameInSheet_(name, idCol, nameCol, id, newName) {
 }
 function ensureSheet_(ss, name, head, textCols) {
   var sh = ss.getSheetByName(name) || ss.insertSheet(name);
+  if (sh.getMaxColumns() < head.length) sh.insertColumnsAfter(sh.getMaxColumns(), head.length - sh.getMaxColumns());
   if (sh.getLastRow() === 0) {
     sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground('#d3f2e8');
     sh.setFrozenRows(1);
@@ -853,6 +1023,8 @@ function apiFn_(name) {
     login: login, logout: logout, bootstrap: bootstrap, changePassword: changePassword,
     saveStaff: saveStaff, deleteStaff: deleteStaff, resetPassword: resetPassword,
     addLeave: addLeave, deleteLeave: deleteLeave, cancelLeave: cancelLeave, restoreLeave: restoreLeave, saveCarry: saveCarry, saveTypes: saveTypes,
+    requestLeave: requestLeave, withdrawLeave: withdrawLeave, reviewLeave: reviewLeave,
+    requestCancel: requestCancel, withdrawCancel: withdrawCancel, reviewCancel: reviewCancel,
     addHoliday: addHoliday, deleteHoliday: deleteHoliday, exportSheet: exportSheet
   };
   return Object.prototype.hasOwnProperty.call(api, name) ? api[name] : null;
