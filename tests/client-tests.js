@@ -178,7 +178,19 @@
       await click('.chip[data-act="cx-kind"][data-k="vacation"]');
       ok('filter by type (vacation → none)', tbls().length === 0 && /ไม่มีรายการลาที่ตรงเงื่อนไข/.test($('#app').innerText), JSON.stringify(tbls()));
       await click('.chip[data-act="cx-kind"][data-k="sick"]');
-      await setv('#cxstaff', [...$('#cxstaff').options].find(o => /บานเย็น/.test(o.text)).value);
+      // ค้นหาชื่อบุคคล: พิมพ์บางส่วนของชื่อ → เลือกจากรายการ
+      const cxPick = async q => { $('#cx_staff_q').focus(); await wait(); await setv('#cx_staff_q', q, 'input');
+        const li = $('#cx_staff_list li[data-sp]'); if (!li) throw new Error('no match for ' + q);
+        li.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })); await wait(150); };
+      $('#cx_staff_q').focus(); await wait();
+      ok('cancel menu: name search opens list', !$('#cx_staff_list').hidden && document.querySelectorAll('#cx_staff_list li[data-sp]').length === 3);
+      await setv('#cx_staff_q', 'กิตติ', 'input');
+      ok('cancel menu: name search filters', document.querySelectorAll('#cx_staff_list li[data-sp]').length === 1 && !!$('#cx_staff_list mark'));
+      await cxPick('กิตติ');
+      ok('cancel menu: pick person filters table', $('#cx_staff_q').value.includes('กิตติ') && $('#cxstaff').value !== 'all' && tbls().length === 0);
+      await click('[data-act="sp-clear"][data-for="cx_staff_q"]');
+      ok('cancel menu: clear person = everyone', $('#cxstaff').value === 'all' && $('#cx_staff_q').value === '' && JSON.stringify(tbls()) === '[1,1]', JSON.stringify(tbls()));
+      await cxPick('บานเย็น');
       ok('filter by type + staff (sick)', JSON.stringify(tbls()) === '[1,1]', JSON.stringify(tbls()));
       await click('#app tbody tr:not(.cancelled) [data-act="ask"][data-k^="cxl:"]');
       await setv('#cxl_reason', 'ยกเลิกจากเมนู', 'input'); $('#cxlForm').requestSubmit(); await wait(250);
@@ -244,6 +256,15 @@
       ok('staff sees own leave only', /บานเย็น/.test(text()) && !/กิตติ/.test(text()) && /ลาป่วย/.test(text()));
       ok('staff sees cancelled leave, no HR buttons', !!$('tr.cancelled') && !$('[data-k^="rst:"]') && !$('[data-act="rv"]') && !$('[data-k^="del:"]'));
       ok('staff has no cancel menu', $('#tabs').hidden && !/ยกเลิกวันลา ปีงบประมาณ/.test($('#app').innerText));
+      // ค่าเริ่มต้น: ล็อกปุ่มของบุคลากร → ปุ่มสีเทา กดไม่ได้
+      const lockedLabels = [...document.querySelectorAll('#app button.locked')].map(b => b.disabled && b.textContent.trim());
+      ok('locked: request button grey + disabled', !$('[data-act="req-open"]') && lockedLabels.includes('+ ยื่นใบลา') && /ติดต่อเจ้าหน้าที่ HR/.test(text()), JSON.stringify(lockedLabels));
+      ok('locked: cancel request button disabled', lockedLabels.includes('ขอยกเลิกวันลา') && !$('[data-k^="cxl:"]') && !$('[data-k^="wd:"]'), JSON.stringify(lockedLabels));
+      m.api.setSetting_('staffRequests', 'เปิด'); m.cache.clear();
+      await click('[data-act="logout"]'); await wait(150);
+      await login('บานเย็น แสงแก้ว', ST_CID);
+      if ($('#pwForm')) await click('[data-act="pw-close"]');
+      ok('unlocked: buttons active again', !!$('[data-act="req-open"]') && !$('#app button.locked'));
 
       // ยื่นใบลา → HR อนุมัติ → ขอยกเลิก → HR ไม่อนุมัติ (มีเหตุผล)
       const row = id => leaves().find(r => r[0] === id);

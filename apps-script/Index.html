@@ -74,6 +74,8 @@ button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--lin
 button:hover{border-color:var(--accent)}
 button:active{transform:translateY(1px)}
 button:disabled{opacity:.5;cursor:not-allowed}
+#app button.locked,#app button.locked:hover{background:var(--surface-2);background-image:none;color:var(--muted);border:1px solid var(--line);box-shadow:none;opacity:1;cursor:not-allowed;transform:none}
+.lock-note{color:var(--muted);font-size:.82rem;margin-right:4px}
 button.primary{background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:var(--accent-ink);border-color:transparent;font-weight:600;box-shadow:0 4px 14px rgba(15,156,125,.28)}
 button.primary:hover{box-shadow:0 6px 18px rgba(15,156,125,.38);border-color:transparent}
 button.ghost{background:transparent;border-color:transparent;color:var(--muted)}
@@ -320,6 +322,7 @@ button.del-strong{background:var(--danger);color:#fff;border-color:var(--danger)
 .chip.is-on.plain{background:var(--accent-soft);border-color:var(--accent)}
 .sp{position:relative}
 .sp-box{position:relative}
+.cx-sp{flex:1 1 260px;min-width:220px}
 .sp-box input{width:100%;padding-left:36px;padding-right:40px}
 .sp-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:1.1rem;pointer-events:none}
 .sp-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);padding:4px 8px;cursor:pointer;box-shadow:none}
@@ -700,14 +703,13 @@ function viewCancel(){
   const actRows=pa.items.map(l=>`<tr><td>${who(l)}</td><td>${pill(l)}</td><td>${range(l)}</td><td class="num">${fmtN(l.days)}</td><td style="white-space:normal;min-width:140px">${esc(l.note||"")}${l.docNo?`<br><small class="muted">เลขที่ ${esc(l.docNo)}</small>`:""}</td><td>${actBtn(l)}</td></tr>`).join("");
   const histRows=ph.items.map(l=>`<tr class="cancelled"><td>${who(l)}</td><td>${pill(l)}</td><td class="strike">${range(l)}</td><td class="num strike">${fmtN(l.days)}</td>
     <td style="white-space:normal;min-width:160px"><small class="cxl-note">${l.cancelledAt?thDate(l.cancelledAt):""}${l.cancelledBy?" โดย "+esc(l.cancelledBy):""}</small><br>${esc(l.cancelReason||"-")}</td><td>${rstBtn(l)}</td></tr>`).join("");
-  const sOpts=staffList().map(p=>`<option value="${esc(p._id)}" ${sid===p._id?"selected":""}>${esc(p.name)}</option>`).join("");
   const kindName=kind==="all"?"ทุกประเภท":(KINDS[kind]||{label:kind}).label;
   const chips=[["all","ทุกประเภท","plain"],["sick","ลาป่วย","sick"],["personal","ลากิจส่วนตัว","per"],["vacation","ลาพักผ่อน","vac"]]
     .map(([k,l,c])=>`<button type="button" class="chip ${c} ${kind===k?"is-on":""}" data-act="cx-kind" data-k="${k}" aria-pressed="${kind===k}">${l}</button>`).join("");
   return `<div><h2>ยกเลิกวันลา ปีงบประมาณ ${fy}</h2><span class="muted">เลือกประเภทการลาและบุคลากร แล้วกด “ยกเลิกวันลา” ที่รายการ วันที่ยกเลิกจะไม่นับเป็นวันลา และยังเก็บประวัติไว้</span></div>
   <div class="stats">${tile("all","all","ยกเลิกทั้งหมด")}${tile("sick","sick","ยกเลิกลาป่วย")}${tile("personal","per","ยกเลิกลากิจส่วนตัว")}${tile("vacation","vac","ยกเลิกลาพักผ่อน")}</div>
   <div class="toolbar"><div class="chips" role="group" aria-label="ประเภทการลา">${chips}</div>
-    <select id="cxstaff" aria-label="บุคลากร"><option value="all">บุคลากรทุกคน</option>${sOpts}</select>
+    <div class="sp cx-sp"><input type="hidden" id="cxstaff" value="${esc(sid)}">${staffPicker("cx_staff_q", "ค้นหาชื่อบุคคล", sid!=="all"?S.staff.get(sid)&&{name:S.staff.get(sid).name}:null, "ค้นหาชื่อบุคคล (ทุกคน)")}</div>
     <input id="cxq" type="search" placeholder="ค้นหาชื่อ หมายเหตุ เลขที่ใบลา" value="${esc(S.cxQ||"")}"></div>
   <h3>รายการลาที่ยกเลิกได้ · ${kindName} <span class="muted cx-count">(${act.length} รายการ)</span></h3>
   ${act.length?`<div class="tbl-wrap"><table><thead><tr><th>ชื่อ-สกุล</th><th>ประเภท</th><th>วันที่ลา</th><th class="num">วันทำการ</th><th>หมายเหตุ</th><th></th></tr></thead><tbody>${actRows}</tbody></table></div>${pa.html}`
@@ -804,6 +806,12 @@ function leaveTable(p, fy, editable){
   // บุคลากร: ถอนใบลาที่รอพิจารณา · ขอยกเลิกวันลาที่อนุมัติแล้ว · ถอนคำขอยกเลิก
   const myActions = l => {
     const id=esc(l.id), k=S.confirmKey;
+    if(staffLocked()){
+      if(l.status==="pending") return lockedBtn("ถอนใบลา");
+      if(l.cx==="pending") return `<button class="small ghost" data-act="withdraw-cancel" data-id="${id}">ถอนคำขอยกเลิก</button>`;
+      if(l.status==="approved" && !l.cancelled) return lockedBtn("ขอยกเลิกวันลา");
+      return "";
+    }
     if(k==="cxl:"+l.id) return cxlFormHtml(l);
     if(k==="wd:"+l.id) return `<span class="confirm"><button class="small danger" data-act="withdraw-leave" data-id="${id}">ยืนยันถอนใบลา</button><button class="small ghost" data-act="cancel">ไม่ถอน</button></span>`;
     if(l.status==="pending") return `<button class="small ghost" data-act="ask" data-k="wd:${id}">ถอนใบลา</button>`;
@@ -855,8 +863,25 @@ function spHi(text, q){
   if(!w) return esc(t); const i=t.toLowerCase().indexOf(w); if(i<0) return esc(t);
   return esc(t.slice(0,i))+"<mark>"+esc(t.slice(i,i+w.length))+"</mark>"+esc(t.slice(i+w.length));
 }
-function spOpen(q){
-  const box=document.getElementById("f_staff_list"), inp=document.getElementById("f_staff_q"); if(!box||!inp) return;
+// ช่องค้นหาบุคลากร (combobox) ใช้ร่วมกัน: ฟอร์มบันทึกการลา (f_staff_q) · เมนูยกเลิกวันลา (cx_staff_q)
+const PK = {
+  f_staff_q: { list:"f_staff_list", cur:()=>S.draft&&S.draft.staffId||"",
+    pick:id=>{ readDraft(); S.draft.staffId=id; S.draft.daysOverride=""; } },
+  cx_staff_q: { list:"cx_staff_list", cur:()=>S.cxStaff&&S.cxStaff!=="all"?S.cxStaff:"",
+    pick:id=>{ S.cxStaff=id||"all"; S.confirmKey=null; resetPages(); } },
+};
+let spInp = "f_staff_q"; // ช่องที่กำลังใช้งาน
+function staffPicker(inpId, label, sel, placeholder){
+  const k=PK[inpId];
+  return `<div class="sp-box"><span class="sp-ic" aria-hidden="true">⌕</span>
+    <input id="${inpId}" type="text" role="combobox" aria-expanded="false" aria-controls="${k.list}" aria-autocomplete="list" aria-label="${label}" autocomplete="off" spellcheck="false"
+      placeholder="${placeholder}" value="${sel?esc(sel.name):""}">
+    ${sel?`<button type="button" class="sp-clear" data-act="sp-clear" data-for="${inpId}" aria-label="ล้างการเลือกบุคลากร">✕</button>`:""}
+    <ul id="${k.list}" class="sp-list" role="listbox" aria-label="รายชื่อบุคลากร" hidden></ul></div>`;
+}
+function spOpen(q, inpId){
+  if(inpId) spInp=inpId;
+  const box=document.getElementById(PK[spInp].list), inp=document.getElementById(spInp); if(!box||!inp) return;
   const all=spFilter(q); SP.items=all.slice(0,60); SP.idx=Math.min(SP.idx, Math.max(0,SP.items.length-1));
   box.innerHTML = SP.items.length
     ? SP.items.map((s,i)=>`<li role="option" id="sp_${i}" data-sp="${esc(s._id)}" aria-selected="${i===SP.idx}"><b>${spHi(s.name,q)}</b><small>${spHi([posLine(s),orgLine(s)].filter(Boolean).join(" · "),q)}</small></li>`).join("")
@@ -866,10 +891,11 @@ function spOpen(q){
   if(SP.items.length) inp.setAttribute("aria-activedescendant","sp_"+SP.idx); else inp.removeAttribute("aria-activedescendant");
   document.getElementById("sp_"+SP.idx)?.scrollIntoView({block:"nearest"});
 }
-function spClose(){ const box=document.getElementById("f_staff_list"), inp=document.getElementById("f_staff_q"); if(box) box.hidden=true; if(inp){ inp.setAttribute("aria-expanded","false"); inp.removeAttribute("aria-activedescendant"); } }
-function spPick(id){
-  readDraft(); S.draft.staffId=id; S.draft.daysOverride=""; spClose(); SP.quiet=true; render(); setTimeout(()=>{ SP.quiet=false; },0);
-  if(!id) document.getElementById("f_staff_q")?.focus();
+function spClose(){ const box=document.getElementById(PK[spInp].list), inp=document.getElementById(spInp); if(box) box.hidden=true; if(inp){ inp.setAttribute("aria-expanded","false"); inp.removeAttribute("aria-activedescendant"); } }
+function spPick(id, inpId){
+  if(inpId) spInp=inpId;
+  PK[spInp].pick(id); spClose(); SP.quiet=true; render(); setTimeout(()=>{ SP.quiet=false; },0);
+  if(!id) document.getElementById(spInp)?.focus();
 }
 function viewRecord(){
   const list = staffList();
@@ -898,11 +924,7 @@ function viewRecord(){
     <div class="grid-form">
       <div class="field wide sp"><label for="f_staff_q">บุคลากร</label>
         <input type="hidden" id="f_staff" value="${esc(d.staffId||"")}">
-        <div class="sp-box"><span class="sp-ic" aria-hidden="true">⌕</span>
-          <input id="f_staff_q" type="text" role="combobox" aria-expanded="false" aria-controls="f_staff_list" aria-autocomplete="list" autocomplete="off" spellcheck="false"
-            placeholder="พิมพ์ชื่อ ตำแหน่ง หรือกลุ่มงาน เพื่อค้นหาบุคลากร (${list.length} คน)" value="${sel?esc(sel.name):""}">
-          ${sel?`<button type="button" class="sp-clear" data-act="sp-clear" aria-label="ล้างการเลือกบุคลากร">✕</button>`:""}
-          <ul id="f_staff_list" class="sp-list" role="listbox" aria-label="รายชื่อบุคลากร" hidden></ul></div>
+        ${staffPicker("f_staff_q", "บุคลากร", sel, `พิมพ์ชื่อ ตำแหน่ง หรือกลุ่มงาน เพื่อค้นหาบุคลากร (${list.length} คน)`)}
         ${sel?`<small class="sp-sel">${esc(selInfo||"เลือกแล้ว")}</small>`:""}</div>
       <div class="field wide"><span>ประเภทการลา</span><div class="chips">
         ${Object.entries(KINDS).map(([k,v])=>`<label class="chip ${k==="sick"?"sick":k==="vacation"?"vac":"per"}"><input type="radio" name="f_kind" value="${k}" ${d.kind===k?"checked":""}>${v.label}</label>`).join("")}
@@ -1188,14 +1210,19 @@ function viewMine(){
     <p>ติดต่อเจ้าหน้าที่ HR</p></div>`;
   return mineHtml(S.myDoc);
 }
+// ล็อกปุ่มของบุคลากร (ตั้งค่าที่ชีตตั้งค่า แถว staffRequests): ปุ่มสีเทา กดไม่ได้
+const staffLocked = () => S.config.staffLocked !== false;
+const LOCK_TIP = "ติดต่อเจ้าหน้าที่ HR เพื่อยื่นใบลาหรือยกเลิกวันลา";
+const lockedBtn = (label, cls="small ghost") => `<button type="button" class="${cls} locked" disabled aria-disabled="true" title="${LOCK_TIP}">${label}</button>`;
 function mineHtml(p){
+  const lk = staffLocked();
   return `<div class="person-head"><div><h2>การลาของฉัน</h2><span class="muted">${esc(p.name)} · ${esc(posLine(p))}${orgLine(p)?" · "+esc(orgLine(p)):""} · ${esc(typeCfg(p).label)}</span></div>
-    <span class="spacer"></span>${S.reqOpen?"":`<button class="primary" data-act="req-open">+ ยื่นใบลา</button>`}</div>
-  ${S.reqOpen?requestFormHtml(p):""}
+    <span class="spacer"></span>${lk?`<span class="lock-note">${LOCK_TIP}</span>${lockedBtn("+ ยื่นใบลา","primary")}`:S.reqOpen?"":`<button class="primary" data-act="req-open">+ ยื่นใบลา</button>`}</div>
+  ${S.reqOpen&&!lk?requestFormHtml(p):""}
   <span class="muted">ปีงบประมาณ ${S.fy} (${thDate(fyRange(S.fy)[0])} – ${thDate(fyRange(S.fy)[1])}) · หน่วยเป็นวันทำการ</span>
   ${balanceCards(p, S.fy)}
   <h3>รายการลา</h3>${leaveTable(p, S.fy, false)}
-  <p class="muted" style="font-size:.85rem">ใบลาที่ยื่นจะนับเป็นวันลาเมื่อ HR อนุมัติ · ใบลาที่ยังรอพิจารณาถอนได้ · วันลาที่อนุมัติแล้วกด “ขอยกเลิกวันลา” ได้ · หากข้อมูลไม่ตรงกับใบลา โปรดติดต่อเจ้าหน้าที่ HR</p>`;
+  <p class="muted" style="font-size:.85rem">${lk?"การยื่นใบลา ถอนใบลา และขอยกเลิกวันลา ให้ติดต่อเจ้าหน้าที่ HR เป็นผู้บันทึก":"ใบลาที่ยื่นจะนับเป็นวันลาเมื่อ HR อนุมัติ · ใบลาที่ยังรอพิจารณาถอนได้ · วันลาที่อนุมัติแล้วกด “ขอยกเลิกวันลา” ได้"} · หากข้อมูลไม่ตรงกับใบลา โปรดติดต่อเจ้าหน้าที่ HR</p>`;
 }
 // ฟอร์มยื่นใบลาของบุคลากร (ใช้ id ช่องเดียวกับหน้าบันทึกการลาของ HR เพื่อใช้ readDraft/refreshCalc ร่วมกัน)
 function requestFormHtml(p){
@@ -1302,7 +1329,7 @@ document.addEventListener("click", async ev => {
   else if(a==="req-close"){ S.reqOpen=false; S.draft=null; render(); }
   else if(a==="withdraw-leave"){ S.confirmKey=null; try{ await call("withdrawLeave", id); toast("ถอนใบลาแล้ว"); }catch(e){} }
   else if(a==="withdraw-cancel"){ S.confirmKey=null; try{ await call("withdrawCancel", id); toast("ถอนคำขอยกเลิกแล้ว"); }catch(e){} }
-  else if(a==="sp-clear"){ spPick(""); }
+  else if(a==="sp-clear"){ spPick("", t.dataset.for||"f_staff_q"); }
   else if(a==="del-leave"){
     S.confirmKey=null; try{ await call("deleteLeave", id); toast("ลบรายการลาแล้ว"); }catch(e){}
   }
@@ -1339,18 +1366,18 @@ document.addEventListener("click", async ev => {
   else if(a==="del-hol"){ try{ await call("deleteHoliday", t.dataset.d); toast("ลบวันหยุดแล้ว"); }catch(e){} }
   else if(a==="csv"){ exportCsv(); }
 });
-document.addEventListener("focusin", ev => { if(ev.target.id==="f_staff_q" && !SP.quiet){ SP.idx=0; ev.target.select(); spOpen(""); } });
+document.addEventListener("focusin", ev => { if(PK[ev.target.id] && !SP.quiet){ SP.idx=0; ev.target.select(); spOpen("", ev.target.id); } });
 document.addEventListener("focusout", ev => {
-  if(ev.target.id!=="f_staff_q") return;
-  setTimeout(()=>{ const inp=document.getElementById("f_staff_q"); if(!inp || document.activeElement===inp) return; spClose();
-    const cur=S.draft&&S.draft.staffId ? S.staff.get(S.draft.staffId) : null;
-    if(!inp.value.trim() && cur) spPick(""); else inp.value = cur ? cur.name : ""; }, 150);
+  const pid=ev.target.id; if(!PK[pid]) return;
+  setTimeout(()=>{ const inp=document.getElementById(pid); if(!inp || document.activeElement===inp) return; spInp=pid; spClose();
+    const cid=PK[pid].cur(), cur=cid ? S.staff.get(cid) : null;
+    if(!inp.value.trim() && cur) spPick("", pid); else inp.value = cur ? cur.name : ""; }, 150);
 });
-document.addEventListener("mousedown", ev => { if(ev.target.id==="f_staff_q" && document.activeElement===ev.target && document.getElementById("f_staff_list")?.hidden){ SP.idx=0; spOpen(""); }
-  const li=ev.target.closest&&ev.target.closest("#f_staff_list li[data-sp]"); if(li){ ev.preventDefault(); spPick(li.dataset.sp); } });
+document.addEventListener("mousedown", ev => { const pid=ev.target.id; if(PK[pid] && document.activeElement===ev.target && document.getElementById(PK[pid].list)?.hidden){ SP.idx=0; spOpen("", pid); }
+  const li=ev.target.closest&&ev.target.closest(".sp-list li[data-sp]"); if(li){ ev.preventDefault(); spPick(li.dataset.sp, li.closest(".sp-box").querySelector("[role=combobox]").id); } });
 document.addEventListener("keydown", ev => {
-  if(ev.target.id==="f_staff_q"){
-    const box=document.getElementById("f_staff_list"); const open=box&&!box.hidden;
+  if(PK[ev.target.id]){
+    spInp=ev.target.id; const box=document.getElementById(PK[spInp].list); const open=box&&!box.hidden;
     if(ev.key==="ArrowDown"||ev.key==="ArrowUp"){ ev.preventDefault(); if(!open){ spOpen(ev.target.value); return; } if(!SP.items.length) return;
       SP.idx=(SP.idx+(ev.key==="ArrowDown"?1:-1)+SP.items.length)%SP.items.length; spOpen(ev.target.value); return; }
     if(ev.key==="Enter"){ ev.preventDefault(); if(open && SP.items[SP.idx]) spPick(SP.items[SP.idx]._id); return; }
@@ -1410,7 +1437,6 @@ document.addEventListener("change", ev => {
   if(id==="sgroup"){ S.sGroup=ev.target.value; resetPages(); render(); }
   if(id==="astatus"){ S.aStatus=ev.target.value; resetPages(); render(); }
   if(id==="cxl_from"||id==="cxl_to"){ cxlUpdate(); return; }
-  if(id==="cxstaff"){ S.cxStaff=ev.target.value; S.confirmKey=null; resetPages(); render(); }
   if(id==="s_group"){ captureStaffForm(); if(!sectionsOf(S.editStaff.group).includes(S.editStaff.section)) S.editStaff.section=""; render(); }
 });
 document.addEventListener("change", ev => {
@@ -1432,7 +1458,7 @@ document.addEventListener("input", ev => {
   else if(id==="aq"){ S.aq=ev.target.value; resetPages(); render(); }
   else if(id==="cxq"){ S.cxQ=ev.target.value; resetPages(); render(); }
   else if(id==="lg_user"){ S.lgUser=ev.target.value; }
-  else if(id==="f_staff_q"){ SP.idx=0; spOpen(ev.target.value); }
+  else if(PK[id]){ SP.idx=0; spOpen(ev.target.value, id); }
   else if(id==="h_n"){ S.hn=ev.target.value; }
   else if((S.view==="record" || (!S.isHR && S.reqOpen)) && (id==="f_note"||id==="f_doc"||id==="f_days"||id==="f_rj")){ readDraft(); if(id==="f_days") refreshCalc(); }
 

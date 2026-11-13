@@ -145,6 +145,13 @@ window.runServerTests = function () {
     const find = (dd, id) => dd.leaves.find(x => x.id === id);
     d = A.bootstrap(T).data;
     ok('old rows (blank review) count as approved', find(d, lv.id).status === 'approved' && find(d, lv.id).cx === '', find(d, lv.id));
+    // ค่าเริ่มต้น: ล็อกปุ่มของบุคลากร (ยื่นใบลา · ถอนใบลา · ขอยกเลิกวันลา) ฝั่งเซิร์ฟเวอร์ด้วย
+    ok('staff locked by default', d.config.staffLocked === true);
+    ok('locked: requestLeave blocked', throws(() => A.requestLeave(ST, { kind: 'sick', start: '2026-12-07', end: '2026-12-07' }), /HR/));
+    ok('locked: requestCancel blocked', throws(() => A.requestCancel(ST, lv.id, 'x'), /HR/));
+    ok('locked: withdrawLeave blocked', throws(() => A.withdrawLeave(ST, lv.id), /HR/));
+    A.setSetting_('staffRequests', 'เปิด');
+    ok('unlocked via setting', A.bootstrap(ST).data.config.staffLocked === false);
     d = A.requestLeave(ST, { staffId: 'someone-else', kind: 'sick', start: '2026-12-07', end: '2026-12-08', note: '=ไข้', days: 99 }).data;
     const rq = d.leaves.find(x => x.start === '2026-12-07');
     ok('requestLeave: pending, own id, server-side days', rq && rq.staffId === st.id && rq.status === 'pending' && rq.days === 2 && rq.note === '=ไข้' && d.leaves.every(x => x.staffId === st.id), rq);

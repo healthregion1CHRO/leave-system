@@ -515,8 +515,14 @@ function appendLeave_(sh, vals, review) {
 }
 
 // บุคลากรยื่นใบลาของตัวเอง → รอพิจารณา (จำนวนวันคำนวณที่เซิร์ฟเวอร์จากวันทำการ)
+// ล็อกปุ่มของบุคลากร (ยื่นใบลา · ถอนใบลา · ขอยกเลิกวันลา) — ค่าเริ่มต้น = ล็อก ให้ HR บันทึกแทน
+// เปิดใช้: ชีตตั้งค่า แถว staffRequests ใส่ค่า "เปิด"
+function staffLocked_() { return String(getSetting_('staffRequests') || '').trim() !== 'เปิด'; }
+function requireStaffOpen_() { if (staffLocked_()) throw new Error('ระบบปิดการยื่นใบลา/ยกเลิกวันลาด้วยตนเอง กรุณาติดต่อเจ้าหน้าที่ HR'); }
+
 function requestLeave(token, l) {
   var u = requireUser_(token);
+  requireStaffOpen_();
   l = l || {};
   if (!KIND_CODES[l.kind]) throw new Error('ประเภทการลาไม่ถูกต้อง');
   if (!isIso_(l.start) || !isIso_(l.end) || l.end < l.start) throw new Error('วันที่ลาไม่ถูกต้อง');
@@ -543,6 +549,7 @@ function requestLeave(token, l) {
 // ถอนใบลาที่ยังรอพิจารณา (เจ้าของใบลา หรือ HR) → ลบแถวออก
 function withdrawLeave(token, leaveId) {
   var u = requireUser_(token);
+  requireStaffOpen_();
   withLock_(function () {
     var sh = sheet_(SH.LEAVES), x = leaveCtx_(sh, leaveId);
     if (!u.isHR && String(x.cur[1]) !== u.me.id) throw new Error('ถอนได้เฉพาะใบลาของตัวเอง');
@@ -603,6 +610,7 @@ function cancelLeave(token, leaveId, reason, from, to) {
 // บุคลากรขอยกเลิกวันลาของตัวเองที่อนุมัติแล้ว (ทั้งรายการ หรือบางช่วง) → รอ HR พิจารณา
 function requestCancel(token, leaveId, reason, from, to) {
   var u = requireUser_(token);
+  requireStaffOpen_();
   reason = String(reason || '').trim();
   if (!reason) throw new Error('กรุณาระบุเหตุผลการยกเลิก');
   withLock_(function () {
@@ -821,7 +829,7 @@ function buildData_(s) {
     carry = carry.filter(function (c) { return c.staffId === me.id; });
   }
   return { me: pub(me), isHR: isHR, staff: staff.map(pub), leaves: leaves, carry: carry,
-    config: { types: types, holidays: holidays, startFY: Number(getSetting_('startFY')) || 2570 } };
+    config: { types: types, holidays: holidays, startFY: Number(getSetting_('startFY')) || 2570, staffLocked: staffLocked_() } };
 }
 
 // ---------------------------------------------------------------- ตัวช่วย
