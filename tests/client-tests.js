@@ -177,9 +177,9 @@
       const tileVal = k => ($('.cx-tile[data-k="' + k + '"] .val') || {}).innerText || '';
       ok('cancel menu opens', /ยกเลิกวันลา ปีงบประมาณ/.test($('#app').innerText) && /^1/.test(tileVal('sick')) && /^1/.test(tileVal('all')) && /^0/.test(tileVal('vacation')), tileVal('all') + ' | ' + tileVal('sick'));
       ok('cancel menu lists active + history', JSON.stringify(tbls()) === '[1,1]' && /ทดสอบ/.test($('tr.cancelled').innerText), JSON.stringify(tbls()));
-      await click('.chip[data-act="cx-kind"][data-k="vacation"]');
+      await click('.cx-tile[data-act="cx-kind"][data-k="vacation"]');
       ok('filter by type (vacation → none)', tbls().length === 0 && /ไม่มีรายการลาที่ตรงเงื่อนไข/.test($('#app').innerText), JSON.stringify(tbls()));
-      await click('.chip[data-act="cx-kind"][data-k="sick"]');
+      await click('.cx-tile[data-act="cx-kind"][data-k="sick"]');
       // ค้นหาชื่อบุคคล: พิมพ์บางส่วนของชื่อ → เลือกจากรายการ
       const cxPick = async q => { $('#cx_staff_q').focus(); await wait(); await setv('#cx_staff_q', q, 'input');
         const li = $('#cx_staff_list li[data-sp]'); if (!li) throw new Error('no match for ' + q);

@@ -683,7 +683,7 @@ function cxlUpdate(){
 }
 // เมนูยกเลิกวันลา: เลือกประเภทการลา/บุคลากร แล้วยกเลิกหรือคืนสถานะ (ใช้ฟอร์ม cxlForm และปุ่ม restore-leave เดิม)
 function viewCancel(){
-  const fy=S.fy, kind=S.cxKind||"all", sid=S.cxStaff||"all", q=(S.cxQ||"").trim().toLowerCase();
+  const fy=S.fy, kind=S.cxKind||"all", sid=S.cxStaff||"all", q="";
   const all=[]; for(const p of staffList()) for(const l of allLeaves(p)) if(l.fy===fy) all.push({...l, _p:p});
   const match=l=>(kind==="all"||l.kind===kind)&&(sid==="all"||l._p._id===sid)&&(!q||`${l._p.name} ${l.note||""} ${l.docNo||""} ${l.cancelReason||""}`.toLowerCase().includes(q));
   // คำขอยกเลิกที่รอพิจารณาขึ้นก่อน
@@ -707,13 +707,10 @@ function viewCancel(){
   const histRows=ph.items.map(l=>`<tr class="cancelled"><td>${who(l)}</td><td>${pill(l)}</td><td class="strike">${range(l)}</td><td class="num strike">${fmtN(l.days)}</td>
     <td style="white-space:normal;min-width:160px"><small class="cxl-note">${l.cancelledAt?thDate(l.cancelledAt):""}${l.cancelledBy?" โดย "+esc(l.cancelledBy):""}</small><br>${esc(l.cancelReason||"-")}</td><td>${rstBtn(l)}</td></tr>`).join("");
   const kindName=kind==="all"?"ทุกประเภท":(KINDS[kind]||{label:kind}).label;
-  const chips=[["all","ทุกประเภท","plain"],["sick","ลาป่วย","sick"],["personal","ลากิจส่วนตัว","per"],["vacation","ลาพักผ่อน","vac"]]
-    .map(([k,l,c])=>`<button type="button" class="chip ${c} ${kind===k?"is-on":""}" data-act="cx-kind" data-k="${k}" aria-pressed="${kind===k}">${l}</button>`).join("");
-  return `<div><h2>ยกเลิกวันลา ปีงบประมาณ ${fy}</h2><span class="muted">เลือกประเภทการลาและบุคลากร แล้วกด “ยกเลิกวันลา” ที่รายการ วันที่ยกเลิกจะไม่นับเป็นวันลา และยังเก็บประวัติไว้</span></div>
+  // กรองประเภทการลา = กดการ์ดสรุปด้านบน · กรองบุคลากร = ช่องค้นหาบุคลากร
+  return `<div><h2>ยกเลิกวันลา ปีงบประมาณ ${fy}</h2><span class="muted">กดการ์ดเพื่อเลือกประเภทการลา ค้นหาบุคลากร แล้วกด “ยกเลิกวันลา” ที่รายการ วันที่ยกเลิกจะไม่นับเป็นวันลา และยังเก็บประวัติไว้</span></div>
   <div class="stats">${tile("all","all","ยกเลิกทั้งหมด")}${tile("sick","sick","ยกเลิกลาป่วย")}${tile("personal","per","ยกเลิกลากิจส่วนตัว")}${tile("vacation","vac","ยกเลิกลาพักผ่อน")}</div>
-  <div class="toolbar"><div class="chips" role="group" aria-label="ประเภทการลา">${chips}</div>
-    <div class="sp cx-sp"><input type="hidden" id="cxstaff" value="${esc(sid)}">${staffPicker("cx_staff_q", "ค้นหาชื่อบุคคล", sid!=="all"?S.staff.get(sid)&&{name:S.staff.get(sid).name}:null, "ค้นหาชื่อบุคคล (ทุกคน)")}</div>
-    <input id="cxq" type="search" placeholder="ค้นหาชื่อ หมายเหตุ เลขที่ใบลา" value="${esc(S.cxQ||"")}"></div>
+  <div class="toolbar"><div class="sp cx-sp"><input type="hidden" id="cxstaff" value="${esc(sid)}">${staffPicker("cx_staff_q", "ค้นหาบุคลากร", sid!=="all"?S.staff.get(sid)&&{name:S.staff.get(sid).name}:null, `ค้นหาบุคลากร: พิมพ์ชื่อ ตำแหน่ง หรือกลุ่มงาน (${staffList().length} คน)`)}</div></div>
   <h3>รายการลาที่ยกเลิกได้ · ${kindName} <span class="muted cx-count">(${act.length} รายการ)</span></h3>
   ${act.length?`<div class="tbl-wrap"><table><thead><tr><th>ชื่อ-สกุล</th><th>ประเภท</th><th>วันที่ลา</th><th class="num">วันทำการ</th><th>หมายเหตุ</th><th></th></tr></thead><tbody>${actRows}</tbody></table></div>${pa.html}`
     :`<div class="panel empty"><h3>ไม่มีรายการลาที่ตรงเงื่อนไข</h3><p>ลองเปลี่ยนประเภทการลา บุคลากร หรือปีงบประมาณ</p></div>`}
@@ -1459,7 +1456,6 @@ document.addEventListener("input", ev => {
   if(id==="q"){ S.q=ev.target.value; resetPages(); render(); }
   else if(id==="sq"){ S.sq=ev.target.value; resetPages(); render(); }
   else if(id==="aq"){ S.aq=ev.target.value; resetPages(); render(); }
-  else if(id==="cxq"){ S.cxQ=ev.target.value; resetPages(); render(); }
   else if(id==="lg_user"){ S.lgUser=ev.target.value; }
   else if(PK[id]){ SP.idx=0; spOpen(ev.target.value, id); }
   else if(id==="h_n"){ S.hn=ev.target.value; }
