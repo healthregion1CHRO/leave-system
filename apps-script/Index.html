@@ -585,8 +585,9 @@ function fyOptions(){
 }
 function tabsHtml(){
   const t = [["summary","สรุปรายบุคคล"],["pending","รอพิจารณา"],["calendar","ปฏิทินการลา"],["record","บันทึกการลา"],["staff","รายชื่อบุคลากร"],["cancel","ยกเลิกวันลา"],["accounts","บัญชีผู้ใช้"],["settings","ตั้งค่าสิทธิ์และวันหยุด"]];
-  const pi = pendingItems(), n = pi.lv.length + pi.cx.length;
-  return t.map(([k,l])=>`<button data-act="tab" data-v="${k}" ${S.view===k||(S.view==="person"&&k==="summary")?'aria-current="page"':""}>${l}${k==="pending"&&n?`<span class="tab-badge" aria-label="${n} รายการ">${n}</span>`:""}</button>`).join("");
+  // ตัวเลขบนเมนู: รอพิจารณา = ใบลา · ยกเลิกวันลา = คำขอยกเลิกที่รอพิจารณา
+  const pi = pendingItems(), cnt = {pending:pi.lv.length, cancel:pi.cx.length};
+  return t.map(([k,l])=>`<button data-act="tab" data-v="${k}" ${S.view===k||(S.view==="person"&&k==="summary")?'aria-current="page"':""}>${l}${cnt[k]?`<span class="tab-badge" aria-label="${cnt[k]} รายการ">${cnt[k]}</span>`:""}</button>`).join("");
 }
 function usageCell(b, kind){
   const pct = b.quota>0 ? Math.min(100, b.used/b.quota*100) : (b.used>0?100:0);
@@ -647,7 +648,8 @@ function statusCell(l){
 }
 function pendingDays(p, fy, kind){ return (p.pending||[]).filter(l=>l.fy===fy && l.kind===kind).reduce((s,l)=>s+Number(l.days||0),0); }
 function viewPending(){
-  const {lv, cx} = pendingItems();
+  // เมนูนี้แสดงเฉพาะใบลา · คำขอยกเลิกวันลาพิจารณาที่เมนู “ยกเลิกวันลา”
+  const {lv} = pendingItems();
   const who=l=>`<div class="name-cell"><span class="av" aria-hidden="true">${esc(initial(l._p.name))}</span><span class="nm"><button class="linklike" data-act="person" data-id="${esc(l._p._id)}">${esc(l._p.name)}</button><small>${esc(orgLine(l._p)||posLine(l._p)||"")}</small></span></div>`;
   const pill=l=>{ const K=KINDS[l.kind]||{cls:"neutral",label:esc(l.kind||"?")}; return `<span class="pill ${K.cls}">${K.label}</span>${l.emergency?` <span class="pill warn">ฉุกเฉิน</span>`:""}`; };
   const range=l=>`${thDate(l.start)}${l.end!==l.start?" – "+thDate(l.end):""}${halfTxt(l)?` <small class="muted">(${halfTxt(l)})</small>`:""}`;
@@ -655,15 +657,9 @@ function viewPending(){
   const head=last=>`<thead><tr><th>ชื่อ-สกุล</th><th>ประเภท</th><th>วันที่ลา</th><th class="num">วันทำการ</th><th>${last}</th><th>การพิจารณา</th></tr></thead>`;
   const rowsL=lv.map(l=>`<tr class="is-pending"><td>${who(l)}</td><td>${pill(l)}</td><td>${range(l)}</td><td class="num">${fmtN(l.days)}${left(l)}</td>
     <td style="white-space:normal;min-width:160px">${esc(l.note||"-")}${l.docNo?`<br><small class="muted">เลขที่ ${esc(l.docNo)}</small>`:""}<span class="by">ยื่นโดย ${esc(l.recordedBy||l._p.name)}</span></td><td>${reviewSeg(l,"leave")}</td></tr>`).join("");
-  const rowsC=cx.map(l=>`<tr class="is-pending"><td>${who(l)}</td><td>${pill(l)}</td><td>${range(l)}</td><td class="num">${fmtN(l.days)}</td>
-    <td style="white-space:normal;min-width:160px">${esc(l.cancelReason||"-")}<span class="by">ยกเลิก${cxRange(l)==="ทั้งรายการ"?"ทั้งรายการ":" "+cxRange(l)} · ขอเมื่อ ${thDate(l.cancelledAt)}</span></td><td>${reviewSeg(l,"cx")}</td></tr>`).join("");
   return `<div><h2>รอพิจารณา</h2><span class="muted">กดปุ่มที่รายการเพื่อเปลี่ยนสถานะ ถ้าเลือก “ไม่อนุมัติ” ต้องระบุเหตุผล · นับเป็นวันลาเฉพาะรายการที่อนุมัติ</span></div>
-  <div class="stats"><div class="stat pend"><span class="lbl"><i></i>ใบลารอพิจารณา</span><span class="val">${lv.length}<small>รายการ</small></span></div>
-    <div class="stat pend"><span class="lbl"><i></i>คำขอยกเลิกรอพิจารณา</span><span class="val">${cx.length}<small>รายการ</small></span></div></div>
-  <h3>ใบลา <span class="muted cx-count">(${lv.length})</span></h3>
-  ${lv.length?`<div class="tbl-wrap"><table>${head("หมายเหตุ")}<tbody>${rowsL}</tbody></table></div>`:`<div class="panel empty"><h3>ไม่มีใบลาที่รอพิจารณา</h3></div>`}
-  <h3>คำขอยกเลิกวันลา <span class="muted cx-count">(${cx.length})</span></h3>
-  ${cx.length?`<div class="tbl-wrap"><table>${head("เหตุผลที่ขอยกเลิก")}<tbody>${rowsC}</tbody></table></div>`:`<div class="panel empty"><h3>ไม่มีคำขอยกเลิกที่รอพิจารณา</h3></div>`}`;
+  <div class="stats"><div class="stat pend"><span class="lbl"><i></i>ใบลารอพิจารณา</span><span class="val">${lv.length}<small>รายการ</small></span></div></div>
+  ${lv.length?`<div class="tbl-wrap"><table>${head("หมายเหตุ")}<tbody>${rowsL}</tbody></table></div>`:`<div class="panel empty"><h3>ไม่มีใบลาที่รอพิจารณา</h3></div>`}`;
 }
 function cxlRead(){
   const f=document.getElementById("cxlForm"); const l=f&&findLeave(f.dataset.id); if(!l) return null;

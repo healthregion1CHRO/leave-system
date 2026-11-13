@@ -274,14 +274,18 @@
       ok('requestCancel → pending, still counted', row(req[0])[14] === 'ขอยกเลิก' && row(req[0])[15] === 'งานด่วน' && !!$(`[data-act="withdraw-cancel"][data-id="${req[0]}"]`), JSON.stringify(row(req[0])));
       await click('[data-act="logout"]'); await wait(150);
       await login('นายทดสอบ ผู้ดูแล', 'hrpass123');
+      ok('cancel request badge on cancel tab', ($('#tabs [data-v="cancel"] .tab-badge') || {}).textContent === '1' && !$('#tabs [data-v="pending"] .tab-badge'));
       await click('[data-act="tab"][data-v="pending"]');
+      ok('pending tab has no cancel requests', !$(`[data-act="rv"][data-t="cx"]`) && !/คำขอยกเลิก/.test($('#app').innerText));
+      await click('[data-act="tab"][data-v="cancel"]');
+      await click('[data-act="cx-kind"][data-k="all"]');
       await click(`[data-act="rv"][data-t="cx"][data-id="${req[0]}"][data-s="rejected"]`);
       ok('reject opens reason form', !!$('#rjForm'));
       $('#rjForm').requestSubmit(); await wait(150);
       ok('reject without reason blocked', row(req[0])[14] === 'ขอยกเลิก' && /เหตุผล/.test(text()));
       await setv('#rj_reason', 'ช่วงนั้นคนพอ', 'input');
       $('#rjForm').requestSubmit(); await wait(250);
-      ok('HR reject cancel writes sheet', row(req[0])[14] === 'ไม่อนุมัติการยกเลิก' && row(req[0])[24] === 'ช่วงนั้นคนพอ' && /ไม่มีคำขอยกเลิกที่รอพิจารณา/.test($('#app').innerText), JSON.stringify(row(req[0])));
+      ok('HR reject cancel writes sheet', row(req[0])[14] === 'ไม่อนุมัติการยกเลิก' && row(req[0])[24] === 'ช่วงนั้นคนพอ' && !$('#tabs .tab-badge'), JSON.stringify(row(req[0])));
     } catch (e) { log.push('CRASH ' + e.stack); }
     ok('no JS errors', window.__errors.length === 0, JSON.stringify(window.__errors));
     return log;
