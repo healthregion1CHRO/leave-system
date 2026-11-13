@@ -1278,7 +1278,9 @@ document.addEventListener("click", async ev => {
   if(a==="cal-nav"){ const n=Number(t.dataset.d); if(!n){ S.calYm=todayIso().slice(0,7); S.calDay=null; } else { const [y,m]=(S.calYm||todayIso().slice(0,7)).split("-").map(Number); const d=new Date(Date.UTC(y,m-1+n,1)); S.calYm=isoOf(d).slice(0,7); S.calDay=null; } render(); return; }
   if(a==="cal-day"){ S.calDay=t.dataset.d; render(); document.querySelector(".lc-grid")?.nextElementSibling?.scrollIntoView?.({behavior:"smooth",block:"nearest"}); return; }
   if(a==="cx-kind"){ S.cxKind=t.dataset.k; S.confirmKey=null; resetPages(); render(); return; }
-  if(a==="tab"){ S.view=t.dataset.v; S.confirmKey=null; S.previewAs=null; S.editType=null; S.typeDraft=null;if(S.view!=="staff") S.editStaff=null; render(); window.scrollTo(0,0); }
+  if(a==="tab"){ S.view=t.dataset.v; S.confirmKey=null;
+    // เปิดเมนูยกเลิกวันลา = ล้างตัวกรอง (ประเภท บุคลากร คำค้น) ให้เห็นคำขอยกเลิกครบทุกรายการ
+    if(S.view==="cancel"){ S.cxKind="all"; S.cxStaff="all"; S.cxQ=""; delete S.page.cxa; delete S.page.cxh; } S.previewAs=null; S.editType=null; S.typeDraft=null;if(S.view!=="staff") S.editStaff=null; render(); window.scrollTo(0,0); }
   else if(a==="person"){ S.personId=id; S.view="person"; S.confirmKey=null; render(); window.scrollTo(0,0); }
   else if(a==="record-for"){ S.draft={staffId:id, kind:"sick", start:todayIso(), end:todayIso(), half:"full", emergency:false, note:"", docNo:"", daysOverride:""}; S.view="record"; render(); }
   else if(a==="reset-draft"){ S.draft=null; render(); }

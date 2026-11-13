@@ -278,7 +278,7 @@
       await click('[data-act="tab"][data-v="pending"]');
       ok('pending tab has no cancel requests', !$(`[data-act="rv"][data-t="cx"]`) && !/คำขอยกเลิก/.test($('#app').innerText));
       await click('[data-act="tab"][data-v="cancel"]');
-      await click('[data-act="cx-kind"][data-k="all"]');
+      ok('opening cancel menu clears filters', ($('[data-act="cx-kind"][aria-pressed="true"]') || {}).dataset?.k === 'all' && $('#cxstaff').value === 'all' && (!$('#cxq') || $('#cxq').value === ''));
       await click(`[data-act="rv"][data-t="cx"][data-id="${req[0]}"][data-s="rejected"]`);
       ok('reject opens reason form', !!$('#rjForm'));
       $('#rjForm').requestSubmit(); await wait(150);
