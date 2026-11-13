@@ -171,6 +171,16 @@ window.runServerTests = function () {
     d = A.addLeave(T, { staffId: st.id, kind: 'vacation', start: '2026-12-21', end: '2026-12-21', days: 1 }).data;
     const hrl = d.leaves.find(x => x.start === '2026-12-21');
     ok('addLeave by HR = approved at once', hrl.status === 'approved' && hrl.reviewedBy === 'นายทดสอบ ผู้ดูแล');
+    // HR เลือกผลการพิจารณาตอนบันทึก: รอพิจารณา / ไม่อนุญาต
+    d = A.addLeave(T, { staffId: st.id, kind: 'sick', start: '2027-01-11', end: '2027-01-11', days: 1, status: 'pending' }).data;
+    const hp = d.leaves.find(x => x.start === '2027-01-11');
+    ok('addLeave status pending', hp && hp.status === 'pending' && !hp.reviewedBy, JSON.stringify(hp));
+    ok('addLeave rejected needs reason', throws(() => A.addLeave(T, { staffId: st.id, kind: 'sick', start: '2027-01-12', end: '2027-01-12', days: 1, status: 'rejected' }), /เหตุผล/));
+    ok('addLeave bad status', throws(() => A.addLeave(T, { staffId: st.id, kind: 'sick', start: '2027-01-12', end: '2027-01-12', days: 1, status: 'xx' }), /สถานะ/));
+    d = A.addLeave(T, { staffId: st.id, kind: 'sick', start: '2027-01-12', end: '2027-01-12', days: 1, status: 'rejected', rejectReason: 'ไม่มีใบรับรองแพทย์' }).data;
+    const hj = d.leaves.find(x => x.start === '2027-01-12');
+    ok('addLeave status rejected + reason', hj && hj.status === 'rejected' && hj.rejectReason === 'ไม่มีใบรับรองแพทย์' && hj.reviewedBy === 'นายทดสอบ ผู้ดูแล', JSON.stringify(hj));
+    A.deleteLeave(T, hp.id); d = A.deleteLeave(T, hj.id).data;
     d = A.requestLeave(ST, { kind: 'sick', start: '2026-12-22', end: '2026-12-22' }).data;
     const pend = d.leaves.find(x => x.start === '2026-12-22');
     ok('HR cannot cancel a pending leave', throws(() => A.cancelLeave(T, pend.id, 'x'), /อนุมัติแล้ว/));

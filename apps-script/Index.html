@@ -166,6 +166,10 @@ td.num,th.num{text-align:right}
 .chip:has(input:checked).per{background:var(--per-soft);border-color:var(--per-bar);color:var(--per)}
 .chip:has(input:checked).plain{background:var(--accent-soft);border-color:var(--accent)}
 .chip:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.chip.st-pending::before{background:var(--pend)} .chip.st-approved::before{background:var(--ok)} .chip.st-rejected::before{background:var(--danger)}
+.chip:has(input:checked).st-pending{background:var(--pend-soft);border-color:var(--pend);color:var(--pend)}
+.chip:has(input:checked).st-approved{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.chip:has(input:checked).st-rejected{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
 .notice{border-radius:12px;padding:12px 16px;background:var(--surface-2);font-size:.9rem}
 .notice.warn{background:var(--danger-soft);color:var(--danger)}
 .notice.ok{background:var(--accent-soft)}
@@ -892,6 +896,7 @@ function viewRecord(){
   const sel = d.staffId ? list.find(s=>s._id===d.staffId) : null;
   const selInfo = sel ? [posLine(sel), orgLine(sel)].filter(Boolean).join(" · ") : "";
   const single = d.start && d.start===d.end;
+  const st = d.status || "approved";
   return `<h2>บันทึกการลา</h2>
   <form class="panel" id="leaveForm" style="display:flex;flex-direction:column;gap:16px">
     <div class="grid-form">
@@ -914,6 +919,10 @@ function viewRecord(){
       <label class="field"><span id="f_days_lbl">จำนวนวันทำการ (คำนวณอัตโนมัติ ${fmtN(auto)} วัน)</span><input type="number" id="f_days" min="0" step="0.5" value="${esc(d.daysOverride)}" placeholder="${fmtN(auto)}"></label>
       <label class="field"><span>เลขที่ใบลา / หนังสือ (ถ้ามี)</span><input id="f_doc" value="${esc(d.docNo)}"></label>
       <label class="field wide"><span>เหตุผล / หมายเหตุ</span><input id="f_note" value="${esc(d.note)}" placeholder="เช่น ไข้หวัด มีใบรับรองแพทย์"></label>
+      <div class="field wide"><span>การพิจารณา</span><div class="chips" role="radiogroup" aria-label="การพิจารณา">
+        ${[["pending","รอพิจารณา"],["approved","อนุญาต"],["rejected","ไม่อนุญาต"]].map(([k,v])=>`<label class="chip st-${k}"><input type="radio" name="f_status" value="${k}" ${st===k?"checked":""}>${v}</label>`).join("")}
+      </div>${st==="rejected"?`<input id="f_rj" maxlength="500" value="${esc(d.rjReason||"")}" placeholder="เหตุผลที่ไม่อนุญาต (จำเป็น)" aria-label="เหตุผลที่ไม่อนุญาต" style="margin-top:8px">`:""}
+        <small class="muted">${st==="approved"?"นับเป็นวันลาทันที":st==="pending"?"ยังไม่หักวันลา จนกว่าจะเปลี่ยนเป็นอนุญาต":"ไม่นับเป็นวันลา"}</small></div>
     </div>
     <div class="row"><span class="muted" style="font-size:.85rem">นับเฉพาะวันทำการ ไม่รวมเสาร์-อาทิตย์และวันหยุดราชการในหน้าตั้งค่า</span><span class="spacer"></span>
       <button type="button" class="ghost" data-act="reset-draft">ล้างฟอร์ม</button><button type="submit" class="primary">บันทึกการลา</button></div>
@@ -1365,6 +1374,8 @@ function readDraft(){
   if(g("f_days")) d.daysOverride = g("f_days").value;
   if(g("f_note")) d.note = g("f_note").value;
   if(g("f_doc")) d.docNo = g("f_doc").value;
+  const st = document.querySelector('input[name="f_status"]:checked'); if(st) d.status = st.value;
+  if(g("f_rj")) d.rjReason = g("f_rj").value;
 }
 function refreshCalc(){
   const box=document.getElementById("calcBox"); if(!box) return;
@@ -1393,7 +1404,7 @@ document.addEventListener("change", ev => {
     readDraft();
     if(["f_start_txt","f_end_txt","f_half","f_kind","f_staff","f_emerg"].includes(id)){ S.draft.daysOverride=""; const fd=document.getElementById("f_days"); if(fd) fd.value=""; }
     // text fields: patch in place, a full re-render here would swallow a click on the save button
-    if(["f_start_txt","f_end_txt","f_note","f_doc","f_days"].includes(id)) refreshCalc(); else render();
+    if(["f_start_txt","f_end_txt","f_note","f_doc","f_days","f_rj"].includes(id)) refreshCalc(); else render();
   }
   if(id==="pageSize"){ S.pageSize=Number(ev.target.value)||10; try{ localStorage.setItem("leave.pageSize", S.pageSize); }catch(e){} resetPages(); render(); }
   if(id==="ftype"){ S.filterType=ev.target.value; resetPages(); render(); }
@@ -1425,7 +1436,7 @@ document.addEventListener("input", ev => {
   else if(id==="lg_user"){ S.lgUser=ev.target.value; }
   else if(id==="f_staff_q"){ SP.idx=0; spOpen(ev.target.value); }
   else if(id==="h_n"){ S.hn=ev.target.value; }
-  else if((S.view==="record" || (!S.isHR && S.reqOpen)) && (id==="f_note"||id==="f_doc"||id==="f_days")){ readDraft(); if(id==="f_days") refreshCalc(); }
+  else if((S.view==="record" || (!S.isHR && S.reqOpen)) && (id==="f_note"||id==="f_doc"||id==="f_days"||id==="f_rj")){ readDraft(); if(id==="f_days") refreshCalc(); }
 
 });
 
@@ -1468,9 +1479,11 @@ document.addEventListener("submit", async ev => {
     const p = S.staff.get(d.staffId); if(!p) return;
     const days = d.daysOverride!=="" ? Number(d.daysOverride) : workingDays(d.start,d.end,d.half);
     if(!(days>0)){ toast("จำนวนวันทำการเป็น 0 ตรวจสอบวันที่หรือวันหยุด"); return; }
-    try{ await call("addLeave", {staffId:d.staffId, kind:d.kind, start:d.start, end:d.end, half:d.start===d.end?d.half:"full", days, emergency:!!d.emergency, note:d.note.trim(), docNo:d.docNo.trim()});
-      toast(`บันทึก${KINDS[d.kind].label}ของ ${p.name} ${fmtN(days)} วันแล้ว`);
-      S.draft={...d, note:"", docNo:"", daysOverride:"", emergency:false}; render(); }
+    const status = d.status || "approved", rjReason = (d.rjReason||"").trim();
+    if(status==="rejected" && !rjReason){ toast("ระบุเหตุผลที่ไม่อนุญาต"); document.getElementById("f_rj")?.focus(); return; }
+    try{ await call("addLeave", {staffId:d.staffId, kind:d.kind, start:d.start, end:d.end, half:d.start===d.end?d.half:"full", days, emergency:!!d.emergency, note:d.note.trim(), docNo:d.docNo.trim(), status, rejectReason:rjReason});
+      toast(`บันทึก${KINDS[d.kind].label}ของ ${p.name} ${fmtN(days)} วันแล้ว (${{pending:"รอพิจารณา",approved:"อนุญาต",rejected:"ไม่อนุญาต"}[status]})`);
+      S.draft={...d, note:"", docNo:"", daysOverride:"", emergency:false, status:"approved", rjReason:""}; render(); }
     catch(e){}
   }
   else if(f.id==="staffForm"){

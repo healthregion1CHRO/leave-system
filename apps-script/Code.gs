@@ -487,13 +487,17 @@ function addLeave(token, l) {
   if (!isIso_(l.start) || !isIso_(l.end) || l.end < l.start) throw new Error('วันที่ลาไม่ถูกต้อง');
   var days = Number(l.days);
   if (!(days > 0) || days > 366) throw new Error('จำนวนวันทำการไม่ถูกต้อง');
+  // HR เลือกผลการพิจารณาตอนบันทึก: รอพิจารณา / อนุญาต / ไม่อนุญาต (ไม่ระบุ = อนุญาต)
+  var status = l.status || 'approved';
+  if (!REVIEW[status]) throw new Error('สถานะการพิจารณาไม่ถูกต้อง');
+  var reason = String(l.rejectReason || '').trim();
+  if (status === 'rejected' && !reason) throw new Error('กรุณาระบุเหตุผลที่ไม่อนุญาต');
   withLock_(function () {
     var r = findStaff_(l.staffId);
     var me = findStaff_(s.id), now = new Date();
-    // HR บันทึกเอง = อนุมัติทันที
     appendLeave_(sheet_(SH.LEAVES), [Utilities.getUuid(), r.id, r.name, l.kind, !!l.emergency, l.start, l.end,
       l.start === l.end ? (l.half || 'full') : 'full', days, fyOf_(l.start), String(l.note || ''), String(l.docNo || ''), me.name, now],
-      [ST_APPROVED, me.name, now, '']);
+      status === 'pending' ? [ST_PENDING, '', '', ''] : [REVIEW[status], me.name, now, status === 'rejected' ? reason.slice(0, 500) : '']);
   });
   return { data: buildData_(s) };
 }
