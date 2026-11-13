@@ -176,9 +176,11 @@
       const tbls = () => [...document.querySelectorAll('#app table')].map(t => t.tBodies[0].rows.length);
       const tileVal = k => ($('.cx-tile[data-k="' + k + '"] .val') || {}).innerText || '';
       ok('cancel menu opens', /ยกเลิกวันลา ปีงบประมาณ/.test($('#app').innerText) && /^1/.test(tileVal('sick')) && /^1/.test(tileVal('all')) && /^0/.test(tileVal('vacation')), tileVal('all') + ' | ' + tileVal('sick'));
-      ok('cancel menu lists active + history', JSON.stringify(tbls()) === '[1,1]' && /ทดสอบ/.test($('tr.cancelled').innerText), JSON.stringify(tbls()));
+      // ยังไม่ค้นหาบุคลากร: ไม่แสดงรายการลาที่ยกเลิกได้ (แสดงข้อความให้ค้นหา) · ประวัติยังแสดง
+      const cxPrompt = () => /ค้นหาบุคลากรเพื่อแสดงรายการลาที่ยกเลิกได้/.test($('#app').innerText);
+      ok('cancel menu: list hidden until search, history shown', JSON.stringify(tbls()) === '[1]' && cxPrompt() && !$('#app tbody tr:not(.cancelled)') && /ทดสอบ/.test($('tr.cancelled').innerText), JSON.stringify(tbls()));
       await click('.cx-tile[data-act="cx-kind"][data-k="vacation"]');
-      ok('filter by type (vacation → none)', tbls().length === 0 && /ไม่มีรายการลาที่ตรงเงื่อนไข/.test($('#app').innerText), JSON.stringify(tbls()));
+      ok('filter by type (vacation → none)', tbls().length === 0 && cxPrompt(), JSON.stringify(tbls()));
       await click('.cx-tile[data-act="cx-kind"][data-k="sick"]');
       // ค้นหาชื่อบุคคล: พิมพ์บางส่วนของชื่อ → เลือกจากรายการ
       const cxPick = async q => { $('#cx_staff_q').focus(); await wait(); await setv('#cx_staff_q', q, 'input');
@@ -189,9 +191,9 @@
       await setv('#cx_staff_q', 'กิตติ', 'input');
       ok('cancel menu: name search filters', document.querySelectorAll('#cx_staff_list li[data-sp]').length === 1 && !!$('#cx_staff_list mark'));
       await cxPick('กิตติ');
-      ok('cancel menu: pick person filters table', $('#cx_staff_q').value.includes('กิตติ') && $('#cxstaff').value !== 'all' && tbls().length === 0);
+      ok('cancel menu: pick person filters table', $('#cx_staff_q').value.includes('กิตติ') && $('#cxstaff').value !== 'all' && tbls().length === 0 && !cxPrompt() && /ไม่มีรายการลาที่ตรงเงื่อนไข/.test($('#app').innerText));
       await click('[data-act="sp-clear"][data-for="cx_staff_q"]');
-      ok('cancel menu: clear person = everyone', $('#cxstaff').value === 'all' && $('#cx_staff_q').value === '' && JSON.stringify(tbls()) === '[1,1]', JSON.stringify(tbls()));
+      ok('cancel menu: clear person = list hidden again', $('#cxstaff').value === 'all' && $('#cx_staff_q').value === '' && JSON.stringify(tbls()) === '[1]' && cxPrompt(), JSON.stringify(tbls()));
       await cxPick('บานเย็น');
       ok('filter by type + staff (sick)', JSON.stringify(tbls()) === '[1,1]', JSON.stringify(tbls()));
       await click('#app tbody tr:not(.cancelled) [data-act="ask"][data-k^="cxl:"]');

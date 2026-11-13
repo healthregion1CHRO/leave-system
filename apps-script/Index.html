@@ -686,8 +686,10 @@ function viewCancel(){
   const fy=S.fy, kind=S.cxKind||"all", sid=S.cxStaff||"all", q="";
   const all=[]; for(const p of staffList()) for(const l of allLeaves(p)) if(l.fy===fy) all.push({...l, _p:p});
   const match=l=>(kind==="all"||l.kind===kind)&&(sid==="all"||l._p._id===sid)&&(!q||`${l._p.name} ${l.note||""} ${l.docNo||""} ${l.cancelReason||""}`.toLowerCase().includes(q));
+  // รายการลาที่ยกเลิกได้: แสดงเฉพาะบุคลากรที่ค้นหา · ยังไม่ค้นหา = แสดงเฉพาะคำขอยกเลิกที่รอพิจารณา (ต้องพิจารณา)
   // คำขอยกเลิกที่รอพิจารณาขึ้นก่อน
-  const act=all.filter(l=>!l.cancelled&&l.status==="approved"&&match(l)).sort((a,b)=>(b.cx==="pending")-(a.cx==="pending")||b.start.localeCompare(a.start));
+  const searched = sid!=="all";
+  const act=all.filter(l=>!l.cancelled&&l.status==="approved"&&match(l)&&(searched||l.cx==="pending")).sort((a,b)=>(b.cx==="pending")-(a.cx==="pending")||b.start.localeCompare(a.start));
   const hist=all.filter(l=>l.cancelled&&match(l)).sort((a,b)=>String(b.cancelledAt||"").localeCompare(String(a.cancelledAt||""))||b.start.localeCompare(a.start));
   const st=k=>{ const x=all.filter(l=>l.cancelled&&(k==="all"||l.kind===k)); return {n:x.length,d:x.reduce((s,l)=>s+Number(l.days||0),0)}; };
   const tile=(k,cls,lbl)=>{ const v=st(k); return `<button type="button" class="stat ${cls} cx-tile ${kind===k?"on":""}" data-act="cx-kind" data-k="${k}" aria-pressed="${kind===k}"><span class="lbl"><i></i>${lbl}</span><span class="val">${v.n}<small>ครั้ง · ${fmtN(v.d)} วัน</small></span></button>`; };
@@ -711,9 +713,11 @@ function viewCancel(){
   return `<div><h2>ยกเลิกวันลา ปีงบประมาณ ${fy}</h2><span class="muted">กดการ์ดเพื่อเลือกประเภทการลา ค้นหาบุคลากร แล้วกด “ยกเลิกวันลา” ที่รายการ วันที่ยกเลิกจะไม่นับเป็นวันลา และยังเก็บประวัติไว้</span></div>
   <div class="stats">${tile("all","all","ยกเลิกทั้งหมด")}${tile("sick","sick","ยกเลิกลาป่วย")}${tile("personal","per","ยกเลิกลากิจส่วนตัว")}${tile("vacation","vac","ยกเลิกลาพักผ่อน")}</div>
   <div class="toolbar"><div class="sp cx-sp"><input type="hidden" id="cxstaff" value="${esc(sid)}">${staffPicker("cx_staff_q", "ค้นหาบุคลากร", sid!=="all"?S.staff.get(sid)&&{name:S.staff.get(sid).name}:null, `ค้นหาบุคลากร: พิมพ์ชื่อ ตำแหน่ง หรือกลุ่มงาน (${staffList().length} คน)`)}</div></div>
-  <h3>รายการลาที่ยกเลิกได้ · ${kindName} <span class="muted cx-count">(${act.length} รายการ)</span></h3>
-  ${act.length?`<div class="tbl-wrap"><table><thead><tr><th>ชื่อ-สกุล</th><th>ประเภท</th><th>วันที่ลา</th><th class="num">วันทำการ</th><th>หมายเหตุ</th><th></th></tr></thead><tbody>${actRows}</tbody></table></div>${pa.html}`
-    :`<div class="panel empty"><h3>ไม่มีรายการลาที่ตรงเงื่อนไข</h3><p>ลองเปลี่ยนประเภทการลา บุคลากร หรือปีงบประมาณ</p></div>`}
+  ${searched?`<h3>รายการลาที่ยกเลิกได้ · ${kindName} <span class="muted cx-count">(${act.length} รายการ)</span></h3>`
+    :act.length?`<h3>คำขอยกเลิกที่รอพิจารณา · ${kindName} <span class="muted cx-count">(${act.length} รายการ)</span></h3>`:""}
+  ${act.length?`<div class="tbl-wrap"><table><thead><tr><th>ชื่อ-สกุล</th><th>ประเภท</th><th>วันที่ลา</th><th class="num">วันทำการ</th><th>หมายเหตุ</th><th></th></tr></thead><tbody>${actRows}</tbody></table></div>${pa.html}`:""}
+  ${searched?(act.length?"":`<div class="panel empty"><h3>ไม่มีรายการลาที่ตรงเงื่อนไข</h3><p>ลองเปลี่ยนประเภทการลา บุคลากร หรือปีงบประมาณ</p></div>`)
+    :`<div class="panel empty cx-prompt"><h3>ค้นหาบุคลากรเพื่อแสดงรายการลาที่ยกเลิกได้</h3><p>พิมพ์ชื่อ ตำแหน่ง หรือกลุ่มงาน ในช่องค้นหาด้านบน แล้วเลือกบุคลากร</p></div>`}
   <h3>ประวัติการยกเลิก · ${kindName} <span class="muted cx-count">(${hist.length} รายการ)</span></h3>
   ${hist.length?`<div class="tbl-wrap"><table><thead><tr><th>ชื่อ-สกุล</th><th>ประเภท</th><th>วันที่ลา</th><th class="num">วันทำการ</th><th>ยกเลิกเมื่อ / เหตุผล</th><th></th></tr></thead><tbody>${histRows}</tbody></table></div>${ph.html}`
     :`<div class="panel empty"><h3>ยังไม่มีการยกเลิกวันลา${kind==="all"?"":"ประเภทนี้"}</h3></div>`}`;
