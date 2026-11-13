@@ -44,6 +44,8 @@
       ok('HR login → first-login password modal', !!$('#pwForm'));
       await click('[data-act="pw-close"]');
       ok('summary visible', /สรุป/.test(text()) && /บานเย็น/.test(text()));
+      const fyList = [...$('#fySel').options].map(o => +o.value), fyStart = 2570;
+      ok('FY list: no year before system start', fyList.length > 0 && fyList.every(f => f >= fyStart) && !fyList.includes(fyStart - 1), JSON.stringify(fyList));
 
       // record leave, change dates after manual days override
       await click('[data-act="tab"][data-v="record"]');
@@ -293,6 +295,12 @@
       await setv('#cxl_reason', 'งานด่วน', 'input');
       $('#cxlForm').requestSubmit(); await wait(250);
       ok('requestCancel → pending, still counted', row(req[0])[14] === 'ขอยกเลิก' && row(req[0])[15] === 'งานด่วน' && !!$(`[data-act="withdraw-cancel"][data-id="${req[0]}"]`), JSON.stringify(row(req[0])));
+      // ล็อกแล้ว: ซ่อนปุ่มถอนคำขอยกเลิก
+      m.api.setSetting_('staffRequests', ''); m.cache.clear();
+      await click('[data-act="logout"]'); await wait(150);
+      await login('บานเย็น แสงแก้ว', ST_CID);
+      if ($('#pwForm')) await click('[data-act="pw-close"]');
+      ok('locked: withdraw-cancel button hidden', !$('[data-act="withdraw-cancel"]') && !/ถอนคำขอยกเลิก/.test($('#app').innerText) && /ขอยกเลิก · รอพิจารณา/.test($('#app').innerText));
       await click('[data-act="logout"]'); await wait(150);
       await login('นายทดสอบ ผู้ดูแล', 'hrpass123');
       ok('cancel request badge on cancel tab', ($('#tabs [data-v="cancel"] .tab-badge') || {}).textContent === '1' && !$('#tabs [data-v="pending"] .tab-badge'));

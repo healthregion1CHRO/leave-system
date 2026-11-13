@@ -150,6 +150,7 @@ window.runServerTests = function () {
     ok('locked: requestLeave blocked', throws(() => A.requestLeave(ST, { kind: 'sick', start: '2026-12-07', end: '2026-12-07' }), /HR/));
     ok('locked: requestCancel blocked', throws(() => A.requestCancel(ST, lv.id, 'x'), /HR/));
     ok('locked: withdrawLeave blocked', throws(() => A.withdrawLeave(ST, lv.id), /HR/));
+    ok('locked: withdrawCancel blocked for staff', throws(() => A.withdrawCancel(ST, lv.id), /HR/));
     A.setSetting_('staffRequests', 'เปิด');
     ok('unlocked via setting', A.bootstrap(ST).data.config.staffLocked === false);
     d = A.requestLeave(ST, { staffId: 'someone-else', kind: 'sick', start: '2026-12-07', end: '2026-12-08', note: '=ไข้', days: 99 }).data;

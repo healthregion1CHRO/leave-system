@@ -581,9 +581,12 @@ function doLogout(silent){
 
 // ---------- rendering ----------
 function fyOptions(){
-  const now = fyOf(todayIso()); const set = new Set([now, now-1, now+1, Number(S.config.startFY)||now]);
+  const now = fyOf(todayIso()), start = Number(S.config.startFY)||now;
+  // ไม่แสดงปีก่อนปีเริ่มต้นระบบ (เช่น 2569) เว้นแต่มีรายการลาในปีนั้นจริง
+  const set = new Set([now, now+1, start, ...(now-1>=start?[now-1]:[])]);
   for(const p of S.staff.values()) for(const l of allLeaves(p)) set.add(l.fy);
   const list=[...set].filter(Boolean).sort((a,b)=>b-a);
+  if(!list.includes(S.fy)) S.fy = list.includes(now) ? now : list[0];
   $fy.innerHTML = list.map(f=>`<option value="${f}" ${f===S.fy?"selected":""}>${f}</option>`).join("");
 }
 function tabsHtml(){
@@ -808,7 +811,7 @@ function leaveTable(p, fy, editable){
     const id=esc(l.id), k=S.confirmKey;
     if(staffLocked()){
       if(l.status==="pending") return lockedBtn("ถอนใบลา");
-      if(l.cx==="pending") return `<button class="small ghost" data-act="withdraw-cancel" data-id="${id}">ถอนคำขอยกเลิก</button>`;
+      if(l.cx==="pending") return ""; // ซ่อนปุ่มถอนคำขอยกเลิก
       if(l.status==="approved" && !l.cancelled) return lockedBtn("ขอยกเลิกวันลา");
       return "";
     }

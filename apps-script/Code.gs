@@ -515,7 +515,7 @@ function appendLeave_(sh, vals, review) {
 }
 
 // บุคลากรยื่นใบลาของตัวเอง → รอพิจารณา (จำนวนวันคำนวณที่เซิร์ฟเวอร์จากวันทำการ)
-// ล็อกปุ่มของบุคลากร (ยื่นใบลา · ถอนใบลา · ขอยกเลิกวันลา) — ค่าเริ่มต้น = ล็อก ให้ HR บันทึกแทน
+// ล็อกปุ่มของบุคลากร (ยื่นใบลา · ถอนใบลา · ขอยกเลิกวันลา · ถอนคำขอยกเลิก) — ค่าเริ่มต้น = ล็อก ให้ HR บันทึกแทน
 // เปิดใช้: ชีตตั้งค่า แถว staffRequests ใส่ค่า "เปิด"
 function staffLocked_() { return String(getSetting_('staffRequests') || '').trim() !== 'เปิด'; }
 function requireStaffOpen_() { if (staffLocked_()) throw new Error('ระบบปิดการยื่นใบลา/ยกเลิกวันลาด้วยตนเอง กรุณาติดต่อเจ้าหน้าที่ HR'); }
@@ -631,6 +631,7 @@ function requestCancel(token, leaveId, reason, from, to) {
 // ถอนคำขอยกเลิกที่ยังรอพิจารณา (เจ้าของ หรือ HR)
 function withdrawCancel(token, leaveId) {
   var u = requireUser_(token);
+  if (!u.isHR) requireStaffOpen_();
   withLock_(function () {
     var sh = sheet_(SH.LEAVES), x = leaveCtx_(sh, leaveId);
     if (!u.isHR && String(x.cur[1]) !== u.me.id) throw new Error('ถอนได้เฉพาะคำขอของตัวเอง');
