@@ -794,7 +794,7 @@ function balanceCards(p, fy){
   return `<div class="balances">${card("sick")}${card("personal",perExtra)}${card("vacation",vacExtra)}</div>`;
 }
 function leaveTable(p, fy, editable){
-  const ls = allLeaves(p).filter(l=>l.fy===fy).sort((a,b)=>b.start.localeCompare(a.start));
+  const ls = allLeaves(p).filter(l=>l.fy===fy).sort((a,b)=>(+(b.status==="pending"||b.cx==="pending"))-(+(a.status==="pending"||a.cx==="pending"))||b.start.localeCompare(a.start)); // รอพิจารณาขึ้นก่อน
   if(!ls.length) return `<div class="panel empty"><h3>ไม่มีรายการลาในปีงบประมาณ ${fy}</h3><p>${editable?"กด “บันทึกการลา” เพื่อเพิ่มรายการ":"กด “ยื่นใบลา” เพื่อส่งใบลาให้ HR พิจารณา"}</p></div>`;
   // HR: ปุ่มพิจารณาใบลา / คำขอยกเลิก + ยกเลิก คืนสถานะ ลบ
   const hrActions = l => {
