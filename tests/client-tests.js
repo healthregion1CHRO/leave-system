@@ -73,6 +73,7 @@
       ok('half-day select disabled for multi-day', $('#f_half').disabled === true);
       await setv('#f_note', 'ไข้หวัด', 'input'); $('#f_note').dispatchEvent(new Event('change', { bubbles: true })); await wait();
       ok('save button still in DOM after note change', !!document.querySelector('#leaveForm button[type=submit]'));
+      await click('input[name="f_status"][value="approved"]');
       await click('#leaveForm button[type=submit]'); await wait(200);
       let L = leaves();
       ok('leave saved with auto days 3', L.length === 1 && Number(L[0][8]) === 3 && L[0][10] === 'ไข้หวัด', JSON.stringify(L));
@@ -83,6 +84,7 @@
       await setv('#f_start_txt', '05/11/2569'); await setv('#f_end_txt', '05/11/2569');
       ok('half-day enabled for single day', $('#f_half').disabled === false);
       await setv('#f_half', 'am');
+      await click('input[name="f_status"][value="approved"]');
       await click('#leaveForm button[type=submit]'); await wait(200);
       L = leaves();
       ok('half-day saved 0.5', L.length === 2 && Number(L[1][8]) === 0.5 && L[1][7] === 'am', JSON.stringify(L[1]));
@@ -91,6 +93,7 @@
       await setv('#f_start_txt', '06/11/2569'); await setv('#f_end_txt', '06/11/2569');
       await click('[data-act="tdp-open"]');
       ok('calendar opened', !!$('.cal'));
+      await click('input[name="f_status"][value="approved"]');
       await click('#leaveForm button[type=submit]'); await wait(200);
       ok('save works while calendar open', leaves().length === 3, leaves().length);
 

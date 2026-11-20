@@ -922,7 +922,7 @@ function viewRecord(){
   const sel = d.staffId ? list.find(s=>s._id===d.staffId) : null;
   const selInfo = sel ? [posLine(sel), orgLine(sel)].filter(Boolean).join(" · ") : "";
   const single = d.start && d.start===d.end;
-  const st = d.status || "approved";
+  const st = d.status || "pending";
   return `<h2>บันทึกการลา</h2>
   <form class="panel" id="leaveForm" style="display:flex;flex-direction:column;gap:16px">
     <div class="grid-form">
@@ -1506,11 +1506,11 @@ document.addEventListener("submit", async ev => {
     const p = S.staff.get(d.staffId); if(!p) return;
     const days = d.daysOverride!=="" ? Number(d.daysOverride) : workingDays(d.start,d.end,d.half);
     if(!(days>0)){ toast("จำนวนวันทำการเป็น 0 ตรวจสอบวันที่หรือวันหยุด"); return; }
-    const status = d.status || "approved", rjReason = (d.rjReason||"").trim();
+    const status = d.status || "pending", rjReason = (d.rjReason||"").trim();
     if(status==="rejected" && !rjReason){ toast("ระบุเหตุผลที่ไม่อนุญาต"); document.getElementById("f_rj")?.focus(); return; }
     try{ await call("addLeave", {staffId:d.staffId, kind:d.kind, start:d.start, end:d.end, half:d.start===d.end?d.half:"full", days, emergency:!!d.emergency, note:d.note.trim(), docNo:d.docNo.trim(), status, rejectReason:rjReason});
       toast(`บันทึก${KINDS[d.kind].label}ของ ${p.name} ${fmtN(days)} วันแล้ว (${{pending:"รอพิจารณา",approved:"อนุญาต",rejected:"ไม่อนุญาต"}[status]})`);
-      S.draft={...d, note:"", docNo:"", daysOverride:"", emergency:false, status:"approved", rjReason:""}; render(); }
+      S.draft={...d, note:"", docNo:"", daysOverride:"", emergency:false, status:"pending", rjReason:""}; render(); }
     catch(e){}
   }
   else if(f.id==="staffForm"){
