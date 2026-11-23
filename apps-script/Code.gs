@@ -487,8 +487,8 @@ function addLeave(token, l) {
   if (!isIso_(l.start) || !isIso_(l.end) || l.end < l.start) throw new Error('วันที่ลาไม่ถูกต้อง');
   var days = Number(l.days);
   if (!(days > 0) || days > 366) throw new Error('จำนวนวันทำการไม่ถูกต้อง');
-  // HR เลือกผลการพิจารณาตอนบันทึก: รอพิจารณา / อนุญาต / ไม่อนุญาต (ไม่ระบุ = อนุญาต)
-  var status = l.status || 'approved';
+  // HR เลือกผลการพิจารณาตอนบันทึก: รอพิจารณา / อนุญาต / ไม่อนุญาต (ไม่ระบุ = รอพิจารณา ยังไม่หักวันลา)
+  var status = l.status || 'pending';
   if (!REVIEW[status]) throw new Error('สถานะการพิจารณาไม่ถูกต้อง');
   var reason = String(l.rejectReason || '').trim();
   if (status === 'rejected' && !reason) throw new Error('กรุณาระบุเหตุผลที่ไม่อนุญาต');

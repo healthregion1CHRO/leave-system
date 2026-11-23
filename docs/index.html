@@ -1046,7 +1046,8 @@ function viewLogin(){
     <label class="field"><span>ผู้ใช้งาน (ชื่อ-นามสกุล)</span><input id="lg_user" autocomplete="username" placeholder="เช่น สุดา ใจงาม" required value="${esc(S.lgUser||"")}"></label>
     <label class="field"><span>รหัสผ่าน (เลขบัตรประชาชน 13 หลัก หรือรหัสที่ตั้งเอง)</span><div class="pw"><input id="lg_pw" type="password" autocomplete="current-password" required><button type="button" class="ghost small" data-act="pw-toggle">แสดง</button></div></label>
     <button type="submit" class="primary" id="lg_btn" ${S.busy?"disabled":""}>${S.busy?"กำลังตรวจสอบ…":"เข้าสู่ระบบ"}</button>
-    <p class="muted" style="font-size:.85rem;margin:0">ลืมรหัสผ่าน ติดต่อเจ้าหน้าที่ HR เพื่อรีเซ็ตรหัสผ่าน</p></form></div>`;
+    <p class="muted" style="font-size:.85rem;margin:0">ลืมรหัสผ่าน ติดต่อเจ้าหน้าที่ HR เพื่อรีเซ็ตรหัสผ่าน</p>
+    <p class="muted" style="font-size:.85rem;margin:0">By สุภัทร บุญประเสริฐ</p></form></div>`;
 }
 function viewSettings(){
   const c = S.config;

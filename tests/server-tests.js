@@ -71,7 +71,7 @@ window.runServerTests = function () {
     ok('HR edit own cid keeps session', !!A.saveStaff(T, { id: hrId, name: 'นายทดสอบ ผู้ดูแล', role: 'HR', ptype: 'gov', cid: hrCid }).data && !!A.bootstrap(T).data);
 
     // 7. leaves
-    d = A.addLeave(T, { staffId: st.id, kind: 'personal', start: '2026-11-02', end: '2026-11-03', days: 2, emergency: true, note: '=SUM(1,2)', docNo: '12/2569' }).data;
+    d = A.addLeave(T, { staffId: st.id, kind: 'personal', start: '2026-11-02', end: '2026-11-03', days: 2, emergency: true, note: '=SUM(1,2)', docNo: '12/2569', status: 'approved' }).data;
     const lv = d.leaves.find(x => x.staffId === st.id);
     ok('leave stored as text', lv && lv.docNo === '12/2569' && lv.note === '=SUM(1,2)' && lv.start === '2026-11-02' && lv.fy === 2570 && lv.emergency === true, lv);
     ok('no Date in data after leave', !noDates(d), noDates(d));
@@ -115,7 +115,7 @@ window.runServerTests = function () {
 
     // 7c. ยกเลิกเฉพาะบางวัน: 16–27 พ.ย. 69 (จ.–ศ. 2 สัปดาห์) วันหยุด 20 พ.ย. → 9 วันทำการ
     A.addHoliday(T, '2026-11-20', 'ทดสอบ');
-    d = A.addLeave(T, { staffId: st.id, kind: 'vacation', start: '2026-11-16', end: '2026-11-27', days: 9, note: '=ไปต่างจังหวัด', docNo: '12/2569' }).data;
+    d = A.addLeave(T, { staffId: st.id, kind: 'vacation', start: '2026-11-16', end: '2026-11-27', days: 9, note: '=ไปต่างจังหวัด', docNo: '12/2569', status: 'approved' }).data;
     const pl = d.leaves.find(x => x.start === '2026-11-16' && x.end === '2026-11-27');
     const nLeaves = rows('การลา').length;
     ok('partial: from before start rejected', throws(() => A.cancelLeave(T, pl.id, 'x', '2026-11-13', '2026-11-18'), /ช่วงวันลา/));
@@ -178,7 +178,9 @@ window.runServerTests = function () {
     ok('withdrawLeave removes pending row', !find(d, hf.id));
     d = A.addLeave(T, { staffId: st.id, kind: 'vacation', start: '2026-12-21', end: '2026-12-21', days: 1 }).data;
     const hrl = d.leaves.find(x => x.start === '2026-12-21');
-    ok('addLeave by HR = approved at once', hrl.status === 'approved' && hrl.reviewedBy === 'นายทดสอบ ผู้ดูแล');
+    ok('addLeave by HR without status = pending (not deducted yet)', hrl.status === 'pending' && !hrl.reviewedBy, JSON.stringify(hrl));
+    d = A.reviewLeave(T, hrl.id, 'approved').data;
+    ok('then HR approves → approved + reviewer', find(d, hrl.id).status === 'approved' && find(d, hrl.id).reviewedBy === 'นายทดสอบ ผู้ดูแล');
     // HR เลือกผลการพิจารณาตอนบันทึก: รอพิจารณา / ไม่อนุญาต
     d = A.addLeave(T, { staffId: st.id, kind: 'sick', start: '2027-01-11', end: '2027-01-11', days: 1, status: 'pending' }).data;
     const hp = d.leaves.find(x => x.start === '2027-01-11');
