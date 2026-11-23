@@ -30,7 +30,8 @@
   const setv = async (sel, v, ev = 'change') => { const el = $(sel); if (!el) throw new Error('no ' + sel); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); if (ev === 'change') el.dispatchEvent(new Event('change', { bubbles: true })); await wait(); };
   const click = async sel => { const el = typeof sel === 'string' ? $(sel) : sel; if (!el) throw new Error('no ' + sel); el.click(); await wait(120); };
   const text = () => document.body.innerText;
-  const leaves = () => m.ss.getSheetByName('การลา')._s.rows.slice(1);
+  // ใบลาอยู่ 2 แท็บ: การลา (อนุมัติ/ไม่อนุมัติ/ยกเลิก) + รอพิจารณา
+  const leaves = () => m.ss.getSheetByName('การลา')._s.rows.slice(1).concat((m.ss.getSheetByName('รอพิจารณา') ? m.ss.getSheetByName('รอพิจารณา')._s.rows.slice(1) : []));
   const staffRow = name => m.ss.getSheetByName('บุคลากร')._s.rows.find(r => r[1] === name);
   const login = async (u, p) => { await setv('#lg_user', u); await setv('#lg_pw', p, 'input'); $('#loginForm').requestSubmit(); await wait(200); };
 

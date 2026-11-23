@@ -179,8 +179,16 @@ window.runServerTests = function () {
     d = A.addLeave(T, { staffId: st.id, kind: 'vacation', start: '2026-12-21', end: '2026-12-21', days: 1 }).data;
     const hrl = d.leaves.find(x => x.start === '2026-12-21');
     ok('addLeave by HR without status = pending (not deducted yet)', hrl.status === 'pending' && !hrl.reviewedBy, JSON.stringify(hrl));
+    const inSheet = (n, id) => rows(n).some(r => r[0] === id);
+    ok('pending leave is in sheet รอพิจารณา (not การลา)', inSheet('รอพิจารณา', hrl.id) && !inSheet('การลา', hrl.id));
     d = A.reviewLeave(T, hrl.id, 'approved').data;
     ok('then HR approves → approved + reviewer', find(d, hrl.id).status === 'approved' && find(d, hrl.id).reviewedBy === 'นายทดสอบ ผู้ดูแล');
+    ok('approved leave moved to sheet การลา', inSheet('การลา', hrl.id) && !inSheet('รอพิจารณา', hrl.id));
+    d = A.reviewLeave(T, hrl.id, 'pending').data;
+    ok('back to pending moves row to รอพิจารณา', find(d, hrl.id).status === 'pending' && inSheet('รอพิจารณา', hrl.id) && !inSheet('การลา', hrl.id));
+    d = A.reviewLeave(T, hrl.id, 'rejected', 'ทดสอบ').data;
+    ok('rejected goes to การลา with reason', find(d, hrl.id).status === 'rejected' && find(d, hrl.id).rejectReason === 'ทดสอบ' && inSheet('การลา', hrl.id) && !inSheet('รอพิจารณา', hrl.id));
+    d = A.reviewLeave(T, hrl.id, 'approved').data;
     // HR เลือกผลการพิจารณาตอนบันทึก: รอพิจารณา / ไม่อนุญาต
     d = A.addLeave(T, { staffId: st.id, kind: 'sick', start: '2027-01-11', end: '2027-01-11', days: 1, status: 'pending' }).data;
     const hp = d.leaves.find(x => x.start === '2027-01-11');
