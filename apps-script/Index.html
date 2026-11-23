@@ -1511,7 +1511,9 @@ document.addEventListener("submit", async ev => {
     if(status==="rejected" && !rjReason){ toast("ระบุเหตุผลที่ไม่อนุญาต"); document.getElementById("f_rj")?.focus(); return; }
     try{ await call("addLeave", {staffId:d.staffId, kind:d.kind, start:d.start, end:d.end, half:d.start===d.end?d.half:"full", days, emergency:!!d.emergency, note:d.note.trim(), docNo:d.docNo.trim(), status, rejectReason:rjReason});
       toast(`บันทึก${KINDS[d.kind].label}ของ ${p.name} ${fmtN(days)} วันแล้ว (${{pending:"รอพิจารณา",approved:"อนุญาต",rejected:"ไม่อนุญาต"}[status]})`);
-      S.draft={...d, note:"", docNo:"", daysOverride:"", emergency:false, status:"pending", rjReason:""}; render(); }
+      S.draft={...d, note:"", docNo:"", daysOverride:"", emergency:false, status:"pending", rjReason:""};
+      if(status==="pending"){ S.view="pending"; S.confirmKey=null; } // บันทึกแล้วพาไปเมนูรอพิจารณาทันที
+      render(); window.scrollTo(0,0); }
     catch(e){}
   }
   else if(f.id==="staffForm"){
